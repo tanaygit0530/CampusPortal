@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #1B2340;
+  --color-ink-light: #2B3560;
+  --color-paper: #FAF6EE;
+  --color-paper-dim: #F1EADA;
+  --color-amber: #E2A63B;
+  --color-rust: #C1502E;
+  --color-slate: #6B7280;
+  --color-charcoal: #232323;
+
+  --font-display: 'Fraunces', serif;
+  --font-body: 'Inter', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  background-color: var(--color-paper);
+  color: var(--color-charcoal);
+}
+
+.dashed-divider {
+  background-image: repeating-linear-gradient(to bottom, #C9C2AE 0, #C9C2AE 6px, transparent 6px, transparent 14px);
+  width: 1.5px;
+}
+
+.notch-left::before,
+.notch-right::after {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  background: var(--color-paper);
+  border-radius: 50%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.notch-left::before {
+  left: -11px;
+}
+
+.notch-right::after {
+  right: -11px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
