@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import EventCard from '../components/EventCard'
 import EventCardSkeleton from '../components/EventCardSkeleton'
-import useFetchEvents from '../hooks/useFetchEvents'
+import { useEvents } from '../context/EventContext'
 
 const stats = [
   { label: 'Live events', value: '04' },
@@ -10,8 +10,8 @@ const stats = [
 ]
 
 export default function Home() {
-  // useEffect-backed custom hook — fetches on mount, exposes loading/error/data
-  const { events, loading, error, refetch } = useFetchEvents()
+  // Context-backed custom hook — accesses shared events state
+  const { events, loading, error, refetch } = useEvents()
 
   return (
     <div>

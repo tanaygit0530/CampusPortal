@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 backend/venv/
+backend/node_modules/
+backend/.env
+.env

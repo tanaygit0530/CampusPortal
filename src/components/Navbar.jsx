@@ -1,15 +1,30 @@
 import { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-
-const links = [
-  { to: '/', label: 'Home' },
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/login', label: 'Log in' },
-]
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 export default function Navbar() {
   const [open, setOpen] = useState(false)
   const { pathname } = useLocation()
+  const navigate = useNavigate()
+  const { user, logout, isAuthenticated } = useAuth()
+
+  const handleLogout = () => {
+    logout()
+    navigate('/')
+    setOpen(false)
+  }
+
+  const links = isAuthenticated
+    ? [
+        { to: '/', label: 'Home' },
+        { to: '/dashboard', label: 'Dashboard' },
+        ...(user?.role === 'admin' ? [{ to: '/admin', label: 'Admin' }] : []),
+      ]
+    : [
+        { to: '/', label: 'Home' },
+        { to: '/dashboard', label: 'Dashboard' },
+        { to: '/login', label: 'Log in' },
+      ]
 
   return (
     <header className="sticky top-0 z-50 border-b border-ink/10 bg-paper/90 backdrop-blur">
@@ -23,6 +38,7 @@ export default function Navbar() {
           </span>
         </Link>
 
+        {/* Desktop Menu */}
         <div className="hidden items-center gap-8 md:flex">
           {links.map((l) => (
             <Link
@@ -35,14 +51,33 @@ export default function Navbar() {
               {l.label}
             </Link>
           ))}
-          <Link
-            to="/login"
-            className="rounded-full bg-ink px-5 py-2 font-body text-sm font-semibold text-paper transition-colors hover:bg-ink-light"
-          >
-            Register now
-          </Link>
+
+          {isAuthenticated ? (
+            <div className="flex items-center gap-4 border-l border-ink/10 pl-4">
+              <div className="text-right">
+                <span className="block font-mono text-xs font-semibold text-ink">{user?.name}</span>
+                <span className="block font-mono text-[10px] uppercase tracking-wider text-rust">
+                  {user?.role}
+                </span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="rounded-full bg-ink px-5 py-2 font-body text-sm font-semibold text-paper transition-colors hover:bg-ink-light"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <Link
+              to="/register"
+              className="rounded-full bg-ink px-5 py-2 font-body text-sm font-semibold text-paper transition-colors hover:bg-ink-light"
+            >
+              Register now
+            </Link>
+          )}
         </div>
 
+        {/* Mobile Toggle */}
         <button
           className="flex h-9 w-9 flex-col items-center justify-center gap-1.5 md:hidden"
           onClick={() => setOpen(!open)}
@@ -54,6 +89,7 @@ export default function Navbar() {
         </button>
       </nav>
 
+      {/* Mobile Menu */}
       {open && (
         <div className="flex flex-col gap-4 border-t border-ink/10 px-6 py-6 md:hidden">
           {links.map((l) => (
@@ -66,6 +102,30 @@ export default function Navbar() {
               {l.label}
             </Link>
           ))}
+          {isAuthenticated ? (
+            <div className="flex flex-col gap-3 border-t border-ink/10 pt-4">
+              <div>
+                <span className="block font-mono text-sm font-semibold text-ink">{user?.name}</span>
+                <span className="block font-mono text-xs uppercase tracking-wider text-rust">
+                  {user?.role}
+                </span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="rounded-full bg-ink py-2 text-center text-sm font-semibold text-paper"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <Link
+              to="/register"
+              onClick={() => setOpen(false)}
+              className="rounded-full bg-ink py-2 text-center text-sm font-semibold text-paper"
+            >
+              Register now
+            </Link>
+          )}
         </div>
       )}
     </header>

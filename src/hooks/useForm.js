@@ -1,8 +1,5 @@
 import { useState } from 'react'
 
-// Reusable form-handling hook. Any form (Login, Register, Create Event in the
-// admin panel later) can call useForm({...initialValues}, validate) instead
-// of re-writing the same useState + onChange + validation wiring every time.
 export default function useForm(initialValues, validate) {
   const [values, setValues] = useState(initialValues)
   const [errors, setErrors] = useState({})
