@@ -14,6 +14,8 @@ export default function Navbar() {
     setOpen(false)
   }
 
+  const userFirstName = user?.name ? user.name.split(' ')[0] : 'User'
+
   const links = isAuthenticated
     ? [
         { to: '/', label: 'Home' },
@@ -54,12 +56,7 @@ export default function Navbar() {
 
           {isAuthenticated ? (
             <div className="flex items-center gap-4 border-l border-ink/10 pl-4">
-              <div className="text-right">
-                <span className="block font-mono text-xs font-semibold text-ink">{user?.name}</span>
-                <span className="block font-mono text-[10px] uppercase tracking-wider text-rust">
-                  {user?.role}
-                </span>
-              </div>
+              <span className="font-mono text-xs font-semibold text-ink">{userFirstName}</span>
               <button
                 onClick={handleLogout}
                 className="rounded-full bg-ink px-5 py-2 font-body text-sm font-semibold text-paper transition-colors hover:bg-ink-light"
@@ -104,12 +101,7 @@ export default function Navbar() {
           ))}
           {isAuthenticated ? (
             <div className="flex flex-col gap-3 border-t border-ink/10 pt-4">
-              <div>
-                <span className="block font-mono text-sm font-semibold text-ink">{user?.name}</span>
-                <span className="block font-mono text-xs uppercase tracking-wider text-rust">
-                  {user?.role}
-                </span>
-              </div>
+              <span className="font-mono text-sm font-semibold text-ink">{userFirstName}</span>
               <button
                 onClick={handleLogout}
                 className="rounded-full bg-ink py-2 text-center text-sm font-semibold text-paper"

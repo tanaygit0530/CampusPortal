@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useEvents } from '../context/EventContext'
+import { useAuth } from '../context/AuthContext'
 import RegistrationModal from './RegistrationModal'
 
 const accent = {
@@ -10,9 +11,11 @@ const accent = {
 }
 
 export default function EventCard({ event }) {
-  const { cancelRegistration, isEventRegistered } = useEvents()
+  const { registerForEvent, cancelRegistration, isEventRegistered } = useEvents()
+  const { user } = useAuth()
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const registered = isEventRegistered(event.id)
+
+  const registered = isEventRegistered(event.id, user?.email)
   const pctLeft = Math.round((event.seatsLeft / event.seatsTotal) * 100)
   const low = pctLeft <= 15
 
@@ -84,7 +87,7 @@ export default function EventCard({ event }) {
               {!registered && event.seatsLeft === 0
                 ? 'Seats full'
                 : registered
-                  ? '✓ Registered (Click to cancel)'
+                  ? '✓ Registered'
                   : 'Register'}
             </button>
           </div>

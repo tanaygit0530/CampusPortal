@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useForm from '../hooks/useForm'
 import { useAuth } from '../context/AuthContext'
+import api from '../api/axiosInstance'
 
 // Simple validation function passed into useForm — same shape works for
 // Register, Create Event, etc. Keeps validation rules out of the JSX.
@@ -36,12 +37,47 @@ export default function Login() {
   const onValid = async () => {
     setFormError(null)
     try {
-      // Exp 6 will replace this with: await api.post('/auth/login', values)
-      await new Promise((res) => setTimeout(res, 600))
-      login({ name: values.name || 'Ananya Sharma', email: values.email, role })
-      navigate('/dashboard')
-    } catch {
-      setFormError('Login failed. Please check your credentials.')
+      if (isRegister) {
+        const response = await api.post('/users', {
+          name: values.name,
+          email: values.email,
+          password: values.password,
+          role,
+        })
+        const savedUser = response.data
+        login({ id: savedUser._id, name: savedUser.name, email: savedUser.email, role: savedUser.role })
+      } else {
+        // Try to fetch existing users or create user record in DB
+        let userObj = { name: values.name || (role === 'admin' ? 'Admin User' : 'Student User'), email: values.email, role }
+        try {
+          const res = await api.get('/users')
+          const existing = res.data.find((u) => u.email === values.email)
+          if (existing) {
+            userObj = { id: existing._id, name: existing.name, email: existing.email, role: existing.role }
+          } else {
+            // Save initial record to MongoDB if not existing yet
+            const created = await api.post('/users', {
+              name: userObj.name,
+              email: userObj.email,
+              password: values.password || 'password123',
+              role,
+            })
+            userObj = { id: created.data._id, name: created.data.name, email: created.data.email, role: created.data.role }
+          }
+        } catch (dbErr) {
+          console.warn('Backend DB lookup fallback:', dbErr.message)
+        }
+        login(userObj)
+      }
+
+      if (role === 'admin') {
+        navigate('/admin')
+      } else {
+        navigate('/dashboard')
+      }
+    } catch (err) {
+      console.error('Login error:', err)
+      setFormError(err.response?.data?.error || 'Authentication failed. Please check backend connection.')
     }
   }
 

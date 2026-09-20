@@ -1,11 +1,54 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useEvents } from '../../context/EventContext'
+import useForm from '../../hooks/useForm'
 import ConfirmModal from '../../components/ConfirmModal'
+import EventCard from '../../components/EventCard'
+
+const categories = ['Technical', 'Cultural', 'Sports', 'Workshop', 'Seminar']
+
+function validateQuickEvent(values) {
+  const errors = {}
+  if (!values.title.trim()) errors.title = 'Title is required'
+  if (!values.category) errors.category = 'Category is required'
+  if (!values.date.trim()) errors.date = 'Date is required'
+  if (!values.time.trim()) errors.time = 'Time is required'
+  if (!values.venue.trim()) errors.venue = 'Venue is required'
+  if (!values.totalSeats) {
+    errors.totalSeats = 'Total seats is required'
+  } else if (isNaN(values.totalSeats) || Number(values.totalSeats) <= 0) {
+    errors.totalSeats = 'Seats must be a positive number'
+  }
+  return errors
+}
 
 export default function AdminDashboard() {
-  const { events, deleteEvent, eventRegistrants } = useEvents()
+  const { events, createEvent, deleteEvent, eventRegistrants } = useEvents()
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [successBanner, setSuccessBanner] = useState(null)
+
+  const { values, errors, submitting, handleChange, handleSubmit, reset } = useForm(
+    {
+      title: '',
+      category: 'Technical',
+      date: '',
+      time: '',
+      venue: '',
+      totalSeats: '',
+    },
+    validateQuickEvent
+  )
+
+  const onQuickSubmit = async (formValues) => {
+    try {
+      const created = createEvent(formValues)
+      setSuccessBanner(`Event "${created.title}" created successfully!`)
+      reset()
+      setTimeout(() => setSuccessBanner(null), 4000)
+    } catch {
+      // handled
+    }
+  }
 
   const totalEvents = events.length
   const totalRegistrations = eventRegistrants.length
@@ -42,12 +85,12 @@ export default function AdminDashboard() {
           to="/admin/events/new"
           className="rounded-full bg-ink px-6 py-3 font-body text-sm font-semibold text-paper transition-colors hover:bg-ink-light"
         >
-          + Create New Event
+          + Full Event Builder
         </Link>
       </div>
 
       {/* Stat Cards */}
-      <div className="mb-12 grid gap-5 sm:grid-cols-3">
+      <div className="mb-10 grid gap-5 sm:grid-cols-3">
         <div className="rounded-2xl border border-ink/10 bg-white p-6 shadow-sm">
           <p className="font-mono text-[11px] uppercase tracking-wider text-slate">Total Events</p>
           <p className="mt-2 font-display text-3xl font-semibold text-ink">{totalEvents}</p>
@@ -64,15 +107,152 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Events Table / Card List */}
+      {/* Quick Event Creation Form */}
+      <div className="mb-12 rounded-3xl border border-ink/10 bg-white p-6 sm:p-8 shadow-sm">
+        <h2 className="font-display text-2xl font-semibold text-ink">Quick Create Event</h2>
+        <p className="mt-1 text-xs text-slate font-mono">
+          Submit this form to call createEvent() from Context and instantly update the live list below without reload.
+        </p>
+
+        {successBanner && (
+          <div className="mt-4 rounded-xl bg-amber/20 px-4 py-2.5 text-sm font-semibold text-ink border border-amber/40">
+            ✓ {successBanner}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit(onQuickSubmit)} className="mt-6 space-y-4" noValidate>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block font-mono text-[11px] uppercase tracking-wider text-slate">
+                Event Title *
+              </label>
+              <input
+                type="text"
+                name="title"
+                value={values.title}
+                onChange={handleChange}
+                placeholder="e.g. AI Innovation Summit"
+                className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none focus:border-rust ${
+                  errors.title ? 'border-rust' : 'border-ink/15'
+                }`}
+              />
+              {errors.title && <p className="mt-1 text-xs text-rust">{errors.title}</p>}
+            </div>
+
+            <div>
+              <label className="mb-1 block font-mono text-[11px] uppercase tracking-wider text-slate">
+                Category *
+              </label>
+              <select
+                name="category"
+                value={values.category}
+                onChange={handleChange}
+                className="w-full rounded-xl border border-ink/15 bg-white px-4 py-2.5 text-sm outline-none focus:border-rust"
+              >
+                {categories.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-4">
+            <div>
+              <label className="mb-1 block font-mono text-[11px] uppercase tracking-wider text-slate">
+                Date *
+              </label>
+              <input
+                type="text"
+                name="date"
+                value={values.date}
+                onChange={handleChange}
+                placeholder="Nov 15, 2026"
+                className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none focus:border-rust ${
+                  errors.date ? 'border-rust' : 'border-ink/15'
+                }`}
+              />
+              {errors.date && <p className="mt-1 text-xs text-rust">{errors.date}</p>}
+            </div>
+
+            <div>
+              <label className="mb-1 block font-mono text-[11px] uppercase tracking-wider text-slate">
+                Time *
+              </label>
+              <input
+                type="text"
+                name="time"
+                value={values.time}
+                onChange={handleChange}
+                placeholder="10:00 AM"
+                className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none focus:border-rust ${
+                  errors.time ? 'border-rust' : 'border-ink/15'
+                }`}
+              />
+              {errors.time && <p className="mt-1 text-xs text-rust">{errors.time}</p>}
+            </div>
+
+            <div>
+              <label className="mb-1 block font-mono text-[11px] uppercase tracking-wider text-slate">
+                Venue *
+              </label>
+              <input
+                type="text"
+                name="venue"
+                value={values.venue}
+                onChange={handleChange}
+                placeholder="Lab 3"
+                className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none focus:border-rust ${
+                  errors.venue ? 'border-rust' : 'border-ink/15'
+                }`}
+              />
+              {errors.venue && <p className="mt-1 text-xs text-rust">{errors.venue}</p>}
+            </div>
+
+            <div>
+              <label className="mb-1 block font-mono text-[11px] uppercase tracking-wider text-slate">
+                Total Seats *
+              </label>
+              <input
+                type="number"
+                name="totalSeats"
+                value={values.totalSeats}
+                onChange={handleChange}
+                placeholder="100"
+                min="1"
+                className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none focus:border-rust ${
+                  errors.totalSeats ? 'border-rust' : 'border-ink/15'
+                }`}
+              />
+              {errors.totalSeats && <p className="mt-1 text-xs text-rust">{errors.totalSeats}</p>}
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="rounded-full bg-ink px-6 py-2.5 font-body text-sm font-semibold text-paper transition-colors hover:bg-ink-light disabled:opacity-60"
+            >
+              {submitting ? 'Creating Event...' : 'Add Event to Context'}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Events Table / Live List */}
       <div className="rounded-2xl border border-ink/10 bg-white p-6 shadow-sm">
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="font-display text-xl font-semibold text-ink">All Campus Events</h2>
-          <span className="font-mono text-xs text-slate">{events.length} listed</span>
+          <div>
+            <h2 className="font-display text-xl font-semibold text-ink">Live Events List (Shared Context State)</h2>
+            <p className="font-mono text-xs text-slate">Updates instantly when events are created above</p>
+          </div>
+          <span className="font-mono text-xs font-semibold text-ink">{events.length} events active</span>
         </div>
 
         {events.length === 0 ? (
-          <p className="font-mono text-sm text-slate py-8 text-center">No events found. Click "+ Create New Event" to add one.</p>
+          <p className="font-mono text-sm text-slate py-8 text-center">No events found in context. Add one above.</p>
         ) : (
           <div className="overflow-x-auto">
             {/* Desktop Table View */}
@@ -143,7 +323,7 @@ export default function AdminDashboard() {
               </tbody>
             </table>
 
-            {/* Mobile Stacked Card View */}
+            {/* Mobile View */}
             <div className="space-y-4 md:hidden">
               {events.map((e) => (
                 <div key={e.id} className="rounded-xl border border-ink/10 bg-paper-dim/30 p-4 space-y-3">

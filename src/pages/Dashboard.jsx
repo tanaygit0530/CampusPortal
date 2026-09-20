@@ -10,7 +10,7 @@ const categories = ['All', 'Technical', 'Cultural', 'Sports']
 
 export default function Dashboard() {
   const [filter, setFilter] = useState('All')
-  const [cancelTarget, setCancelTarget] = useState(null) // event object to cancel
+  const [cancelTarget, setCancelTarget] = useState(null) // registration or event object to cancel
   const { user } = useAuth()
   const { events, loading, error, refetch, registrations, cancelRegistration } = useEvents()
   const { width } = useWindowSize() // custom hook from CH-3 pattern, re-runs on resize
@@ -18,12 +18,18 @@ export default function Dashboard() {
   const filtered =
     filter === 'All' ? events : events.filter((e) => e.category === filter)
 
+  const userRegistrations = registrations.filter(
+    (r) => !user?.email || r.studentEmail === user.email
+  )
+
   const handleConfirmCancel = () => {
     if (cancelTarget) {
-      cancelRegistration(cancelTarget.id)
+      cancelRegistration(cancelTarget.regId || cancelTarget.id)
       setCancelTarget(null)
     }
   }
+
+  const firstName = user?.name ? user.name.split(' ')[0] : 'there'
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-12">
@@ -34,7 +40,7 @@ export default function Dashboard() {
             {user?.role === 'admin' ? 'Admin dashboard' : 'Student dashboard'}
           </span>
           <h1 className="mt-2 font-display text-4xl font-semibold text-ink">
-            {user?.name ? `Hi, ${user.name.split(' ')[0]} 👋` : 'Hi there 👋'}
+            Hi, {firstName} 👋
           </h1>
           <p className="mt-1 font-mono text-[11px] text-slate">
             Viewing on {width < 768 ? 'mobile' : 'desktop'} · {width}px wide
@@ -43,7 +49,7 @@ export default function Dashboard() {
         <div className="flex gap-6 border-t border-ink/10 pt-4 md:border-t-0 md:pt-0">
           <div>
             <p className="font-display text-2xl font-semibold text-ink">
-              {registrations.length}
+              {userRegistrations.length}
             </p>
             <p className="font-mono text-[11px] uppercase tracking-wider text-slate">
               Registrations
@@ -63,12 +69,12 @@ export default function Dashboard() {
       {/* My registrations strip */}
       <div className="mb-12">
         <h2 className="mb-4 font-display text-xl font-semibold text-ink">My registrations</h2>
-        {registrations.length === 0 ? (
+        {userRegistrations.length === 0 ? (
           <p className="font-mono text-sm text-slate">No active registrations yet.</p>
         ) : (
           <div className="flex flex-wrap gap-4">
-            {registrations.map((reg) => {
-              const event = events.find((e) => e.id === reg.id)
+            {userRegistrations.map((reg) => {
+              const event = events.find((e) => e.id === (reg.eventId || reg.id))
               if (!event) return null
               return (
                 <div
@@ -78,18 +84,18 @@ export default function Dashboard() {
                   <div className="flex items-center gap-3">
                     <span
                       className={`h-2 w-2 shrink-0 rounded-full ${
-                        reg.status === 'Confirmed' ? 'bg-amber' : 'bg-slate'
+                        reg.status === 'confirmed' || reg.status === 'Confirmed' ? 'bg-amber' : 'bg-slate'
                       }`}
                     />
                     <div>
                       <p className="text-sm font-semibold text-ink">{event.title}</p>
-                      <p className="font-mono text-[11px] text-slate">
-                        {reg.regNo} · {reg.status}
+                      <p className="font-mono text-[11px] text-slate font-medium capitalize">
+                        {reg.id} · {reg.status}
                       </p>
                     </div>
                   </div>
                   <button
-                    onClick={() => setCancelTarget(event)}
+                    onClick={() => setCancelTarget({ regId: reg.id, id: event.id, title: event.title })}
                     className="rounded-full border border-rust/30 px-3 py-1 font-mono text-[10px] uppercase font-semibold text-rust transition-colors hover:bg-rust hover:text-paper"
                   >
                     Cancel

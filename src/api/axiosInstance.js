@@ -3,7 +3,7 @@ import axios from 'axios'
 // Centralized Axios instance so baseURL / headers / interceptors live in one place.
 // In Exp 4 this will point at the real Express server (e.g. http://localhost:5000/api).
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5001/api',
   timeout: 8000,
 })
 

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import useForm from '../hooks/useForm'
 import { useAuth } from '../context/AuthContext'
+import api from '../api/axiosInstance'
 
 function validateRegister(values) {
   const errors = {}
@@ -30,18 +31,35 @@ export default function Register() {
   const { login } = useAuth()
 
   const { values, errors, submitting, handleChange, handleSubmit } = useForm(
-    { name: '', email: '', password: '', confirmPassword: '' },
+    { name: '', email: '', password: '', confirmPassword: '', role: 'student' },
     validateRegister
   )
 
   const onValid = async (formValues) => {
     setFormError(null)
     try {
-      await new Promise((res) => setTimeout(res, 500))
-      login({ name: formValues.name, email: formValues.email, role: 'student' })
-      navigate('/dashboard')
-    } catch {
-      setFormError('Account creation failed. Please try again.')
+      // Send real POST request to MongoDB backend
+      const response = await api.post('/users', {
+        name: formValues.name,
+        email: formValues.email,
+        password: formValues.password,
+        role: formValues.role || 'student',
+      })
+      const savedUser = response.data
+      login({
+        id: savedUser._id,
+        name: savedUser.name,
+        email: savedUser.email,
+        role: savedUser.role,
+      })
+      if (savedUser.role === 'admin') {
+        navigate('/admin')
+      } else {
+        navigate('/dashboard')
+      }
+    } catch (err) {
+      console.error('API registration error:', err)
+      setFormError(err.response?.data?.error || 'Account creation failed. Please check backend connection.')
     }
   }
 
@@ -82,14 +100,56 @@ export default function Register() {
       {/* Right form panel */}
       <div className="flex items-center justify-center p-8 md:p-12">
         <div className="w-full max-w-sm">
-          <h1 className="font-display text-3xl font-semibold text-ink">Create student account</h1>
-          <p className="mt-2 text-sm text-slate">Enter your details to set up your CampusPass account.</p>
+          <h1 className="font-display text-3xl font-semibold text-ink">Create an account</h1>
+          <p className="mt-2 text-sm text-slate">Enter your details and select your role to set up your CampusPass account.</p>
 
           {formError && (
             <p className="mt-4 rounded-lg bg-rust/10 px-3 py-2 text-sm text-rust">{formError}</p>
           )}
 
           <form className="mt-6 space-y-4" onSubmit={handleSubmit(onValid)} noValidate>
+            <div>
+              <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
+                Register As (Account Role)
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label
+                  className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border p-2.5 font-mono text-xs font-semibold transition-all ${
+                    values.role === 'student'
+                      ? 'border-rust bg-rust/10 text-rust shadow-sm'
+                      : 'border-ink/15 bg-white text-slate hover:border-ink/30'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="role"
+                    value="student"
+                    checked={values.role === 'student'}
+                    onChange={handleChange}
+                    className="sr-only"
+                  />
+                  <span>🎓 Student</span>
+                </label>
+                <label
+                  className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border p-2.5 font-mono text-xs font-semibold transition-all ${
+                    values.role === 'admin'
+                      ? 'border-ink bg-ink text-paper shadow-sm'
+                      : 'border-ink/15 bg-white text-slate hover:border-ink/30'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="role"
+                    value="admin"
+                    checked={values.role === 'admin'}
+                    onChange={handleChange}
+                    className="sr-only"
+                  />
+                  <span>⚡ Admin / Faculty</span>
+                </label>
+              </div>
+            </div>
+
             <div>
               <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
                 Full Name
