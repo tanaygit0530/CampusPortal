@@ -3,15 +3,33 @@ const express = require('express')
 const mongoose = require('mongoose')
 const cors = require('cors')
 const path = require('path')
+const helmet = require('helmet')
+const rateLimit = require('express-rate-limit')
 
+const authRoutes = require('./routes/authRoutes')
 const userRoutes = require('./routes/userRoutes')
 const eventRoutes = require('./routes/eventRoutes')
 const registrationRoutes = require('./routes/registrationRoutes')
 
 const app = express()
 
-// Middleware
-app.use(cors())
+// Security Middleware
+app.use(helmet())
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+    credentials: true,
+  })
+)
+
+// Rate Limiting (100 requests per 15 minutes)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { message: 'Too many requests, please try again later' },
+})
+app.use('/api/', limiter)
+
 app.use(express.json())
 
 // Database Connection
@@ -44,9 +62,16 @@ app.get('/', (req, res) => {
 })
 
 // Mount API routes
+app.use('/api/auth', authRoutes)
 app.use('/api/users', userRoutes)
 app.use('/api/events', eventRoutes)
 app.use('/api/registrations', registrationRoutes)
+
+// Centralized Error-Handling Middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack)
+  res.status(500).json({ message: 'Something went wrong on the server' })
+})
 
 const PORT = process.env.PORT || 5001
 
