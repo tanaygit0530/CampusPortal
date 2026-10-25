@@ -2,8 +2,13 @@ import axios from 'axios'
 
 // Centralized Axios instance so baseURL / headers / interceptors live in one place.
 // In Exp 4 this will point at the real Express server (e.g. http://localhost:5000/api).
+const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+const resolvedBaseUrl = rawApiUrl.endsWith('/api')
+  ? rawApiUrl
+  : `${rawApiUrl.replace(/\/$/, '')}/api`
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5001/api',
+  baseURL: resolvedBaseUrl,
   timeout: 8000,
 })
 

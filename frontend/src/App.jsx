@@ -11,6 +11,7 @@ import EventDetail from './pages/EventDetail'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import EventForm from './pages/admin/EventForm'
 import EventRegistrants from './pages/admin/EventRegistrants'
+import Chat from './pages/Chat'
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/chat" element={<Chat />} />
 
               {/* Protected Student Routes */}
               <Route

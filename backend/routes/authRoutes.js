@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const { body, validationResult } = require('express-validator')
 const User = require('../models/User')
-const { protect } = require('../middleware/authMiddleware')
+const { protect, isAdmin } = require('../middleware/authMiddleware')
 
 const JWT_SECRET = process.env.JWT_SECRET || 'campuspass_super_secret_jwt_key_2026_exp5_secure!'
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d'
@@ -119,6 +119,54 @@ router.get('/profile', protect, async (req, res, next) => {
       return res.status(404).json({ message: 'User not found' })
     }
     res.status(200).json(user)
+  } catch (error) {
+    next(error)
+  }
+})
+
+// @route   GET /api/auth/dashboard
+// @desc    General protected dashboard route (accessible to student or admin)
+// @access  Private (student or admin)
+router.get('/dashboard', protect, async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.userId).select('-password')
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+    res.status(200).json({
+      message: `Welcome to CampusPass Dashboard, ${user.name}!`,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      access: 'Granted — Student & Admin General Access',
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
+// @route   GET /api/auth/admin-dashboard
+// @desc    Admin-only protected route (accessible only to admin role)
+// @access  Private (Admin only)
+router.get('/admin-dashboard', protect, isAdmin, async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.userId).select('-password')
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' })
+    }
+    res.status(200).json({
+      message: `Welcome to CampusPass Admin Portal, ${user.name}!`,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+      access: 'Granted — Admin Privilege Level',
+    })
   } catch (error) {
     next(error)
   }

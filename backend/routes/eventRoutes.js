@@ -1,12 +1,28 @@
 const express = require('express')
 const router = express.Router()
 const Event = require('../models/Event')
+const { protect, isAdmin } = require('../middleware/authMiddleware')
 
 // @route   POST /api/events
-// @desc    Create an event
-router.post('/', async (req, res) => {
+// @desc    Create an event (Admin only)
+router.post('/', protect, isAdmin, async (req, res) => {
   try {
-    const event = await Event.create(req.body)
+    const event = await Event.create({
+      ...req.body,
+      createdBy: req.user.userId,
+    })
+
+    // Emit real-time notification via Socket.IO
+    const io = req.app.get('io')
+    if (io) {
+      io.emit('eventCreated', {
+        id: event._id,
+        title: event.title,
+        category: event.category,
+        date: event.date,
+      })
+    }
+
     res.status(201).json(event)
   } catch (error) {
     res.status(400).json({ error: error.message || 'Failed to create event' })
@@ -39,8 +55,8 @@ router.get('/:id', async (req, res) => {
 })
 
 // @route   PUT /api/events/:id
-// @desc    Update an event
-router.put('/:id', async (req, res) => {
+// @desc    Update an event (Admin only)
+router.put('/:id', protect, isAdmin, async (req, res) => {
   try {
     const event = await Event.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
@@ -56,8 +72,8 @@ router.put('/:id', async (req, res) => {
 })
 
 // @route   DELETE /api/events/:id
-// @desc    Delete an event
-router.delete('/:id', async (req, res) => {
+// @desc    Delete an event (Admin only)
+router.delete('/:id', protect, isAdmin, async (req, res) => {
   try {
     const event = await Event.findByIdAndDelete(req.params.id)
     if (!event) {
@@ -70,3 +86,4 @@ router.delete('/:id', async (req, res) => {
 })
 
 module.exports = router
+

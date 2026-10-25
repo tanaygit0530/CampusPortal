@@ -20,11 +20,13 @@ export default function Navbar() {
     ? [
         { to: '/', label: 'Home' },
         { to: '/dashboard', label: 'Dashboard' },
+        { to: '/chat', label: 'Chat' },
         ...(user?.role === 'admin' ? [{ to: '/admin', label: 'Admin' }] : []),
       ]
     : [
         { to: '/', label: 'Home' },
         { to: '/dashboard', label: 'Dashboard' },
+        { to: '/chat', label: 'Chat' },
         { to: '/login', label: 'Log in' },
       ]
 

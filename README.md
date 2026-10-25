@@ -55,4 +55,19 @@ src/
 7. Docker deployment
 8. WebSockets — real-time notifications
 9. Containerization — Docker Compose
-# CampusPortal
+
+## Experiment 8 — Real-Time WebSockets (Socket.IO)
+**Aim:** Enable instant, bi-directional real-time communication between clients and the server using WebSockets (`Socket.IO`).
+
+### What's implemented
+- **Socket.IO Backend Integration** (`backend/server.js`): Wrapped Express app in Node `http.Server` sharing port 5000 with REST APIs and MongoDB. Handles `connection`, `chatMessage` broadcast, and `disconnect`.
+- **Real-Time Chat Page** (`frontend/src/pages/Chat.jsx`): Interactive chat interface at `/chat` featuring live green/red connection status badge, editable username prefill from `AuthContext`, scrollable message history, sender-based message differentiation, and lifecycle cleanup via `useRef`.
+- **Real-Time Event Notifications**: Emits `eventCreated` socket notification when admins publish new campus events.
+
+> **Production Considerations Note:**
+> The current chat implementation is a demonstration. For production deployment, real-time WebSockets should incorporate:
+> 1. Socket Authentication (JWT token validation during handshake middleware).
+> 2. Strict Input Validation & Sanitization (preventing XSS in broadcast messages).
+> 3. Connection and Message Rate Limiting (mitigating spam and DDoS).
+> 4. Secure WebSockets over HTTPS/WSS with persistent message storage in MongoDB.
+
