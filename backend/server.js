@@ -55,23 +55,61 @@ const io = new Server(server, {
 // Store io instance on app for bonus real-time event notifications
 app.set('io', io)
 
-// Socket.IO Event Handlers
-io.on('connection', (socket) => {
-  console.log(`A user connected: ${socket.id}`)
+const jwt = require('jsonwebtoken')
+const JWT_SECRET = process.env.JWT_SECRET || 'campuspass_super_secret_jwt_key_2026_exp5_secure!'
 
-  // Listen for chatMessage from client
-  socket.on('chatMessage', (data) => {
-    // Broadcast to all connected clients (including sender)
-    io.emit('chatMessage', {
-      username: data?.username || 'Anonymous',
-      message: data?.message || '',
-      timestamp: data?.timestamp || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    })
-  })
+// Socket.IO Authentication Middleware via JWT Handshake
+io.use((socket, next) => {
+  const token =
+    socket.handshake.auth?.token ||
+    (socket.handshake.headers?.authorization &&
+      socket.handshake.headers.authorization.replace(/^Bearer\s+/i, ''))
+
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET)
+      socket.user = {
+        userId: decoded.userId,
+        role: decoded.role || 'student',
+        isGuest: false,
+      }
+      return next()
+    } catch (err) {
+      console.warn(`[Socket.IO Auth] Connection rejected for socket ${socket.id}: ${err.message}`)
+      return next(new Error('Authentication error: invalid or expired token'))
+    }
+  }
+
+  // Allow visitors without a token as guest connections (public events only)
+  socket.user = {
+    userId: null,
+    role: 'visitor',
+    isGuest: true,
+  }
+  return next()
+})
+
+// Socket.IO Connection & Room Management (No client chat broadcasting allowed)
+io.on('connection', (socket) => {
+  const user = socket.user || { role: 'visitor', isGuest: true }
+  console.log(
+    `[Socket.IO] Client connected: ${socket.id} | User: ${user.userId || 'Visitor'} | Role: ${user.role}`
+  )
+
+  // Put admin sockets in 'admins' room
+  if (user.role === 'admin') {
+    socket.join('admins')
+    console.log(`[Socket.IO] Socket ${socket.id} joined 'admins' room`)
+  }
+
+  // Put all authenticated users in 'authenticated' room
+  if (!user.isGuest) {
+    socket.join('authenticated')
+  }
 
   // Handle client disconnect
-  socket.on('disconnect', () => {
-    console.log(`A user disconnected: ${socket.id}`)
+  socket.on('disconnect', (reason) => {
+    console.log(`[Socket.IO] Client disconnected: ${socket.id} (${reason})`)
   })
 })
 

@@ -8,8 +8,10 @@ export default function EventRegistrants() {
   const { events, eventRegistrants, cancelStudentRegistration } = useEvents()
   const [removeTarget, setRemoveTarget] = useState(null)
 
-  const event = events.find((e) => e.id === id)
-  const registrants = eventRegistrants.filter((r) => r.eventId === id)
+  const event = events.find((e) => e.id === id || e._id === id)
+  const registrants = eventRegistrants.filter(
+    (r) => r.eventId === id || r.eventId === event?._id || r.eventId === event?.id
+  )
 
   if (!event) {
     return (

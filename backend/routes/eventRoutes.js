@@ -12,14 +12,13 @@ router.post('/', protect, isAdmin, async (req, res) => {
       createdBy: req.user.userId,
     })
 
-    // Emit real-time notification via Socket.IO
+    // Emit real-time notification to all connected clients
     const io = req.app.get('io')
     if (io) {
-      io.emit('eventCreated', {
-        id: event._id,
-        title: event.title,
-        category: event.category,
-        date: event.date,
+      io.emit('event:created', {
+        event,
+        message: `New event added: ${event.title}`,
+        timestamp: new Date().toISOString(),
       })
     }
 
@@ -65,6 +64,17 @@ router.put('/:id', protect, isAdmin, async (req, res) => {
     if (!event) {
       return res.status(404).json({ error: 'Event not found' })
     }
+
+    // Emit real-time update event
+    const io = req.app.get('io')
+    if (io) {
+      io.emit('event:updated', {
+        event,
+        message: `Event updated: ${event.title}`,
+        timestamp: new Date().toISOString(),
+      })
+    }
+
     res.status(200).json(event)
   } catch (error) {
     res.status(400).json({ error: error.message || 'Failed to update event' })
@@ -75,10 +85,24 @@ router.put('/:id', protect, isAdmin, async (req, res) => {
 // @desc    Delete an event (Admin only)
 router.delete('/:id', protect, isAdmin, async (req, res) => {
   try {
-    const event = await Event.findByIdAndDelete(req.params.id)
+    const event = await Event.findById(req.params.id)
     if (!event) {
       return res.status(404).json({ error: 'Event not found' })
     }
+
+    await Event.findByIdAndDelete(req.params.id)
+
+    // Emit real-time delete event with event details
+    const io = req.app.get('io')
+    if (io) {
+      io.emit('event:deleted', {
+        eventId: req.params.id,
+        title: event.title,
+        message: `Event "${event.title}" has been deleted.`,
+        timestamp: new Date().toISOString(),
+      })
+    }
+
     res.status(200).json({ message: 'Event deleted successfully' })
   } catch (error) {
     res.status(500).json({ error: error.message || 'Failed to delete event' })

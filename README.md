@@ -56,18 +56,23 @@ src/
 8. WebSockets — real-time notifications
 9. Containerization — Docker Compose
 
-## Experiment 8 — Real-Time WebSockets (Socket.IO)
-**Aim:** Enable instant, bi-directional real-time communication between clients and the server using WebSockets (`Socket.IO`).
+## Real-Time Architecture — Authenticated WebSockets (Socket.IO)
 
-### What's implemented
-- **Socket.IO Backend Integration** (`backend/server.js`): Wrapped Express app in Node `http.Server` sharing port 5000 with REST APIs and MongoDB. Handles `connection`, `chatMessage` broadcast, and `disconnect`.
-- **Real-Time Chat Page** (`frontend/src/pages/Chat.jsx`): Interactive chat interface at `/chat` featuring live green/red connection status badge, editable username prefill from `AuthContext`, scrollable message history, sender-based message differentiation, and lifecycle cleanup via `useRef`.
-- **Real-Time Event Notifications**: Emits `eventCreated` socket notification when admins publish new campus events.
+**Aim:** Integrated real-time synchronization across event and registration flows using authenticated WebSockets (`Socket.IO`).
 
-> **Production Considerations Note:**
-> The current chat implementation is a demonstration. For production deployment, real-time WebSockets should incorporate:
-> 1. Socket Authentication (JWT token validation during handshake middleware).
-> 2. Strict Input Validation & Sanitization (preventing XSS in broadcast messages).
-> 3. Connection and Message Rate Limiting (mitigating spam and DDoS).
-> 4. Secure WebSockets over HTTPS/WSS with persistent message storage in MongoDB.
+### Real-Time Events Implemented
+1. **`event:created`** (Server-Emitted on `POST /api/events`): Broadcasts new event metadata to all connected clients. Automatically inserts the event card into live dashboards and triggers a toast alert (`New event added: [title]`) without page refresh.
+2. **`event:updated`** (Server-Emitted on `PUT /api/events/:id`): Broadcasts event modifications live across all dashboards.
+3. **`event:deleted`** (Server-Emitted on `DELETE /api/events/:id`): Broadcasts event deletion. Removes the card from dashboards and automatically alerts and redirects users viewing the deleted event's detail page.
+4. **`event:seatsUpdated`** (Server-Emitted on `POST /api/registrations` & `DELETE /api/registrations/:id`): Broadcasts instant seat count changes (`seatsLeft`, `seatsTotal`, `isFull`) to all open event cards and detail pages with highlight animations. Automatically flips button state to "Seats full" when capacity is reached.
+5. **`event:lowSeats`** (Server-Emitted): Alerts students when event capacity drops below 10%.
+6. **`admin:notification`** (Server-Emitted to `'admins'` room only): Notifies administrators in real time when students register or cancel (`[Student] registered for [Event]`).
+7. **`registration:created` & `registration:cancelled`** (Server-Emitted to `'admins'` room): Dynamically adds or removes student records in the admin registrants table live.
+
+### Socket Authentication & Security
+- **JWT Handshake Middleware**: Socket connections authenticate using the user's JWT (`auth: { token }`).
+- **Role-Based Rooms**: Verified admins automatically join the protected `'admins'` room; authenticated students join `'authenticated'`.
+- **Public Visitor Support**: Visitors connecting without a token are granted guest access to public updates (new events, live seat counts) while admin notifications remain completely inaccessible.
+- **Token Rejection**: Expired or forged tokens are rejected immediately at the handshake level with an authentication error.
+- **Client Security**: Clients never broadcast events directly; all real-time events originate exclusively from verified backend controller operations following successful database writes.
 

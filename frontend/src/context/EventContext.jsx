@@ -1,6 +1,8 @@
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
 import useFetchEvents from '../hooks/useFetchEvents'
 import api from '../api/axiosInstance'
+import { useSocket } from './SocketContext'
+import { useNotifications } from './NotificationContext'
 import {
   events as initialEvents,
   myRegistrations as initialRegistrations,
@@ -11,6 +13,9 @@ const EventContext = createContext(null)
 
 export function EventProvider({ children }) {
   const { events: fetchedEvents, loading: fetchLoading, error: fetchError, refetch } = useFetchEvents()
+  const { socket, isConnected, reconnectCount } = useSocket()
+  const { addNotification } = useNotifications()
+
   const [events, setEvents] = useState(initialEvents)
   const [registrations, setRegistrations] = useState(
     initialRegistrations.map((r) => ({
@@ -22,17 +27,185 @@ export function EventProvider({ children }) {
     }))
   )
   const [eventRegistrants, setEventRegistrants] = useState(initialEventRegistrants)
+  const [highlightedEventId, setHighlightedEventId] = useState(null)
+  const [lastDeletedEventId, setLastDeletedEventId] = useState(null)
+  const highlightTimerRef = useRef(null)
 
+  // Trigger brief visual highlight animation for seat updates
+  const triggerHighlight = useCallback((eventId) => {
+    setHighlightedEventId(eventId)
+    if (highlightTimerRef.current) clearTimeout(highlightTimerRef.current)
+    highlightTimerRef.current = setTimeout(() => {
+      setHighlightedEventId(null)
+    }, 2000)
+  }, [])
+
+  // Sync fetched events from initial API load
   useEffect(() => {
     if (fetchedEvents && fetchedEvents.length > 0) {
       setEvents((prev) => {
         return fetchedEvents.map((fe) => {
-          const existing = prev.find((e) => e.id === fe.id)
+          const existing = prev.find((e) => e.id === fe.id || e._id === fe._id)
           return existing ? { ...existing, ...fe } : fe
         })
       })
     }
   }, [fetchedEvents])
+
+  // Refetch events on socket reconnect to avoid missing updates
+  useEffect(() => {
+    if (reconnectCount > 1) {
+      refetch?.()
+    }
+  }, [reconnectCount, refetch])
+
+  // Real-Time Socket Event Listeners
+  useEffect(() => {
+    if (!socket) return
+
+    // 1. New Event Created (Admin broadcast)
+    const handleEventCreated = (data) => {
+      const incoming = data.event
+      if (!incoming) return
+      const normalized = {
+        id: incoming._id || incoming.id,
+        _id: incoming._id || incoming.id,
+        ...incoming,
+        seatsTotal: incoming.totalSeats || incoming.seatsTotal,
+        color: incoming.color || 'amber',
+      }
+
+      setEvents((prev) => {
+        // Prevent duplicate if creator already added locally
+        if (prev.some((e) => e.id === normalized.id || e._id === normalized._id)) {
+          return prev
+        }
+        return [normalized, ...prev]
+      })
+
+      addNotification({
+        type: 'event_created',
+        title: 'New Event Added',
+        message: data.message || `New event added: ${incoming.title}`,
+      })
+    }
+
+    // 2. Event Updated
+    const handleEventUpdated = (data) => {
+      const incoming = data.event
+      if (!incoming) return
+      const targetId = incoming._id || incoming.id
+
+      setEvents((prev) =>
+        prev.map((e) => (e.id === targetId || e._id === targetId ? { ...e, ...incoming } : e))
+      )
+
+      addNotification({
+        type: 'seats_updated',
+        title: 'Event Updated',
+        message: data.message || `Event updated: ${incoming.title}`,
+      })
+    }
+
+    // 3. Event Deleted
+    const handleEventDeleted = (data) => {
+      const { eventId, title, message } = data
+      setEvents((prev) => prev.filter((e) => e.id !== eventId && e._id !== eventId))
+      setRegistrations((prev) => prev.filter((r) => r.eventId !== eventId))
+      setEventRegistrants((prev) => prev.filter((r) => r.eventId !== eventId))
+      setLastDeletedEventId(eventId)
+
+      addNotification({
+        type: 'event_deleted',
+        title: 'Event Deleted',
+        message: message || `Event "${title || 'Event'}" has been deleted.`,
+      })
+    }
+
+    // 4. Live Seat Count Updates
+    const handleSeatsUpdated = (data) => {
+      const { eventId, seatsLeft, seatsTotal, isFull } = data
+      triggerHighlight(eventId)
+
+      setEvents((prev) =>
+        prev.map((e) => {
+          if (e.id === eventId || e._id === eventId) {
+            return {
+              ...e,
+              seatsLeft,
+              seatsTotal: seatsTotal !== undefined ? seatsTotal : e.seatsTotal,
+              status: isFull ? 'closed' : 'open',
+            }
+          }
+          return e
+        })
+      )
+    }
+
+    // 5. Low Seats Alert
+    const handleLowSeats = (data) => {
+      addNotification({
+        type: 'low_seats',
+        title: 'Seats Filling Fast!',
+        message: data.message || `Hurry! Only ${data.seatsLeft} seats left for "${data.title}"!`,
+      })
+    }
+
+    // 6. Admin Notifications (Registration / Cancellation alerts)
+    const handleAdminNotification = (data) => {
+      addNotification({
+        type: 'admin_alert',
+        title: 'Admin Activity',
+        message: data.message,
+      })
+    }
+
+    // 7. Live Registrant Added (Admin Registrants Table)
+    const handleRegistrationCreated = (data) => {
+      if (!data?.registration) return
+      setEventRegistrants((prev) => {
+        // Prevent duplicate
+        if (prev.some((r) => r.id === data.registration.id || r._id === data.registration._id)) {
+          return prev
+        }
+        return [data.registration, ...prev]
+      })
+    }
+
+    // 8. Live Registrant Removed (Admin Registrants Table)
+    const handleRegistrationCancelled = (data) => {
+      const { registrationId, eventId, studentEmail } = data
+      setEventRegistrants((prev) =>
+        prev.filter((r) => {
+          if (registrationId && (r.id === registrationId || r._id === registrationId)) return false
+          if (eventId && studentEmail && r.eventId === eventId && r.studentEmail === studentEmail) {
+            return false
+          }
+          return true
+        })
+      )
+    }
+
+    socket.on('event:created', handleEventCreated)
+    socket.on('event:updated', handleEventUpdated)
+    socket.on('event:deleted', handleEventDeleted)
+    socket.on('event:seatsUpdated', handleSeatsUpdated)
+    socket.on('event:lowSeats', handleLowSeats)
+    socket.on('admin:notification', handleAdminNotification)
+    socket.on('registration:created', handleRegistrationCreated)
+    socket.on('registration:cancelled', handleRegistrationCancelled)
+
+    return () => {
+      socket.off('event:created', handleEventCreated)
+      socket.off('event:updated', handleEventUpdated)
+      socket.off('event:deleted', handleEventDeleted)
+      socket.off('event:seatsUpdated', handleSeatsUpdated)
+      socket.off('event:lowSeats', handleLowSeats)
+      socket.off('admin:notification', handleAdminNotification)
+      socket.off('registration:created', handleRegistrationCreated)
+      socket.off('registration:cancelled', handleRegistrationCancelled)
+    }
+  }, [socket, addNotification, triggerHighlight])
 
   const createEvent = async (eventData) => {
     const seatsCount = Number(eventData.totalSeats || eventData.seatsTotal || 100)
@@ -102,7 +275,11 @@ export function EventProvider({ children }) {
 
   const registerForEvent = async (eventId, studentEmail, formData = {}) => {
     setEvents((prev) =>
-      prev.map((e) => (e.id === eventId || e._id === eventId ? { ...e, seatsLeft: Math.max(0, e.seatsLeft - 1) } : e))
+      prev.map((e) =>
+        e.id === eventId || e._id === eventId
+          ? { ...e, seatsLeft: Math.max(0, e.seatsLeft - 1) }
+          : e
+      )
     )
     const newReg = {
       id: `REG-${Date.now()}`,
@@ -124,7 +301,11 @@ export function EventProvider({ children }) {
         department: formData.department || 'CS',
         year: formData.year || '3rd',
         teamName: formData.teamName || 'N/A',
-        registeredAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        registeredAt: new Date().toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }),
         status: 'Confirmed',
       },
     ])
@@ -152,7 +333,9 @@ export function EventProvider({ children }) {
       // Find event _id
       const eventsRes = await api.get('/events')
       if (eventsRes.data.length > 0) {
-        const matchingEvent = eventsRes.data.find((e) => e._id === eventId || e.title === formData.eventTitle)
+        const matchingEvent = eventsRes.data.find(
+          (e) => e._id === eventId || e.title === formData.eventTitle
+        )
         targetEventId = matchingEvent ? matchingEvent._id : eventsRes.data[0]._id
       }
 
@@ -171,9 +354,7 @@ export function EventProvider({ children }) {
     return newReg
   }
 
-  // cancelRegistration — student cancels
-  // TODO (Exp 4): replace with DELETE /api/registrations/:id
-  const cancelRegistration = (registrationId) => {
+  const cancelRegistration = async (registrationId) => {
     const reg = registrations.find((r) => r.id === registrationId || r.eventId === registrationId)
     if (!reg) return
     const targetEventId = reg.eventId || registrationId
@@ -182,10 +363,21 @@ export function EventProvider({ children }) {
       prev.map((e) => (e.id === targetEventId ? { ...e, seatsLeft: e.seatsLeft + 1 } : e))
     )
     setRegistrations((prev) => prev.filter((r) => r.id !== reg.id && r.eventId !== targetEventId))
-    setEventRegistrants((prev) => prev.filter((r) => r.eventId !== targetEventId || r.studentEmail !== reg.studentEmail))
+    setEventRegistrants((prev) =>
+      prev.filter((r) => r.eventId !== targetEventId || r.studentEmail !== reg.studentEmail)
+    )
+
+    // Call DELETE /api/registrations/:id if mongoId exists
+    if (reg.mongoId) {
+      try {
+        await api.delete(`/registrations/${reg.mongoId}`)
+      } catch (err) {
+        console.warn('Backend cancel registration notice:', err.message)
+      }
+    }
   }
 
-  const cancelStudentRegistration = (eventId, studentEmail) => {
+  const cancelStudentRegistration = async (eventId, studentEmail) => {
     setEventRegistrants((prev) =>
       prev.filter((r) => !(r.eventId === eventId && r.studentEmail === studentEmail))
     )
@@ -209,6 +401,8 @@ export function EventProvider({ children }) {
         refetch,
         registrations,
         eventRegistrants,
+        highlightedEventId,
+        lastDeletedEventId,
         createEvent,
         addEvent: createEvent,
         updateEvent,
@@ -234,6 +428,8 @@ export const useEvents = () => {
       refetch: () => {},
       registrations: [],
       eventRegistrants: [],
+      highlightedEventId: null,
+      lastDeletedEventId: null,
       createEvent: () => ({}),
       addEvent: () => ({}),
       updateEvent: () => {},

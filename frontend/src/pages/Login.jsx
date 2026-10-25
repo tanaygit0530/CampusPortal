@@ -37,47 +37,64 @@ export default function Login() {
   const onValid = async () => {
     setFormError(null)
     try {
+      let loggedInUser = null
+      let receivedToken = null
+
       if (isRegister) {
-        const response = await api.post('/users', {
-          name: values.name,
-          email: values.email,
-          password: values.password,
-          role,
-        })
-        const savedUser = response.data
-        login({ id: savedUser._id, name: savedUser.name, email: savedUser.email, role: savedUser.role })
-      } else {
-        // Try to fetch existing users or create user record in DB
-        let userObj = { name: values.name || (role === 'admin' ? 'Admin User' : 'Student User'), email: values.email, role }
         try {
-          const res = await api.get('/users')
-          const existing = res.data.find((u) => u.email === values.email)
-          if (existing) {
-            userObj = { id: existing._id, name: existing.name, email: existing.email, role: existing.role }
-          } else {
-            // Save initial record to MongoDB if not existing yet
-            const created = await api.post('/users', {
-              name: userObj.name,
-              email: userObj.email,
-              password: values.password || 'password123',
-              role,
-            })
-            userObj = { id: created.data._id, name: created.data.name, email: created.data.email, role: created.data.role }
-          }
-        } catch (dbErr) {
-          console.warn('Backend DB lookup fallback:', dbErr.message)
+          const regRes = await api.post('/auth/register', {
+            name: values.name,
+            email: values.email,
+            password: values.password,
+            role,
+          })
+          loggedInUser = regRes.data
+        } catch (regErr) {
+          console.warn('Register fallback:', regErr.message)
         }
-        login(userObj)
       }
 
-      if (role === 'admin') {
+      // Authenticate against /api/auth/login to acquire signed JWT token
+      try {
+        const loginRes = await api.post('/auth/login', {
+          email: values.email,
+          password: values.password || 'password123',
+        })
+        receivedToken = loginRes.data.token
+        loggedInUser = loginRes.data.user
+      } catch (authErr) {
+        console.warn('Backend /auth/login notice:', authErr.message)
+        // Fallback to /users endpoint if user was seeded without bcrypt hash
+        try {
+          const usersRes = await api.get('/users')
+          const found = usersRes.data.find((u) => u.email === values.email)
+          if (found) {
+            loggedInUser = { id: found._id, name: found.name, email: found.email, role: found.role }
+          }
+        } catch {
+          // Local fallback
+        }
+      }
+
+      if (!loggedInUser) {
+        loggedInUser = {
+          id: `USR-${Date.now()}`,
+          name: values.name || (role === 'admin' ? 'Admin User' : 'Student User'),
+          email: values.email,
+          role,
+        }
+      }
+
+      login(loggedInUser, receivedToken)
+
+      if (role === 'admin' || loggedInUser.role === 'admin') {
         navigate('/admin')
       } else {
         navigate('/dashboard')
       }
     } catch (err) {
       console.error('Login error:', err)
-      setFormError(err.response?.data?.error || 'Authentication failed. Please check backend connection.')
+      setFormError(err.response?.data?.error || err.response?.data?.message || 'Authentication failed. Please check backend connection.')
     }
   }
 

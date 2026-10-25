@@ -1,16 +1,31 @@
-import { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useEvents } from '../context/EventContext'
 import RegistrationModal from '../components/RegistrationModal'
 
 export default function EventDetail() {
   const { id } = useParams()
-  const { events, isEventRegistered } = useEvents()
+  const navigate = useNavigate()
+  const { events, isEventRegistered, highlightedEventId, lastDeletedEventId } = useEvents()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState(null)
 
-  const event = events.find((e) => e.id === id)
-  const isRegistered = event ? isEventRegistered(event.id) : false
+  const event = events.find((e) => e.id === id || e._id === id)
+  const isRegistered = event ? isEventRegistered(event.id || event._id) : false
+
+  const isHighlighted =
+    highlightedEventId && (highlightedEventId === id || highlightedEventId === event?._id)
+
+  // Redirect if currently viewed event is deleted in real-time
+  useEffect(() => {
+    if (lastDeletedEventId && (lastDeletedEventId === id || lastDeletedEventId === event?._id)) {
+      setToastMessage('This event was deleted by an administrator. Redirecting to dashboard...')
+      const timer = setTimeout(() => {
+        navigate('/dashboard')
+      }, 2500)
+      return () => clearTimeout(timer)
+    }
+  }, [lastDeletedEventId, id, event?._id, navigate])
 
   if (!event) {
     return (
@@ -177,10 +192,14 @@ export default function EventDetail() {
           )}
 
           {/* Seat Capacity Bar & Register Button */}
-          <div className="space-y-4 pt-4 border-t border-ink/10">
+          <div
+            className={`space-y-4 pt-4 border-t border-ink/10 rounded-2xl p-4 transition-all duration-500 ${
+              isHighlighted ? 'bg-amber/10 ring-2 ring-amber' : ''
+            }`}
+          >
             <div className="flex items-center justify-between font-mono text-xs text-slate">
               <span>Seat Reservation Status</span>
-              <span>
+              <span className={isHighlighted ? 'text-rust font-bold animate-pulse' : ''}>
                 {event.seatsLeft} / {event.seatsTotal} Total Seats Available
               </span>
             </div>

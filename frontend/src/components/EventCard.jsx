@@ -11,9 +11,12 @@ const accent = {
 }
 
 export default function EventCard({ event }) {
-  const { registerForEvent, cancelRegistration, isEventRegistered } = useEvents()
+  const { registerForEvent, cancelRegistration, isEventRegistered, highlightedEventId } = useEvents()
   const { user } = useAuth()
   const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const isHighlighted =
+    highlightedEventId && (highlightedEventId === event.id || highlightedEventId === event._id)
 
   const registered = isEventRegistered(event.id, user?.email)
   const pctLeft = Math.round((event.seatsLeft / event.seatsTotal) * 100)
@@ -31,7 +34,13 @@ export default function EventCard({ event }) {
 
   return (
     <>
-      <div className="group relative flex overflow-hidden rounded-2xl border border-ink/10 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md">
+      <div
+        className={`group relative flex overflow-hidden rounded-2xl border bg-white shadow-sm transition-all duration-500 hover:-translate-y-0.5 hover:shadow-md ${
+          isHighlighted
+            ? 'border-amber ring-2 ring-amber bg-amber/5 scale-[1.01] shadow-lg'
+            : 'border-ink/10'
+        }`}
+      >
         {/* Stub label strip */}
         <div className={`flex w-16 shrink-0 items-center justify-center ${accent[event.color] || accent.amber}`}>
           <span className="rotate-180 font-mono text-[11px] uppercase tracking-[0.2em] [writing-mode:vertical-rl]">
@@ -65,7 +74,9 @@ export default function EventCard({ event }) {
 
           <div>
             <div className="mb-1.5 flex items-center justify-between font-mono text-[11px] text-slate">
-              <span>{event.seatsLeft} seats left</span>
+              <span className={`transition-colors duration-500 ${isHighlighted ? 'text-rust font-bold bg-amber/20 px-1 rounded animate-pulse' : ''}`}>
+                {event.seatsLeft} seats left
+              </span>
               <span>{event.seatsTotal} total</span>
             </div>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-paper-dim">
