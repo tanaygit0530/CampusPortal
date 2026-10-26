@@ -8,7 +8,7 @@ const resolvedBaseUrl = rawApiUrl.endsWith('/api')
 
 const api = axios.create({
   baseURL: resolvedBaseUrl,
-  timeout: 10000,
+  timeout: 45000,
 })
 
 // Request interceptor — attaches the JWT token automatically
