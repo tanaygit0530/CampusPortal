@@ -6,7 +6,7 @@ import ConfirmModal from '../components/ConfirmModal'
 import { useAuth } from '../context/AuthContext'
 import { useEvents } from '../context/EventContext'
 
-const categories = ['All', 'Technical', 'Cultural', 'Sports', 'Other']
+const categories = ['All', 'Technical', 'Cultural', 'Sports', 'Workshop', 'Seminar']
 const modes = ['All', 'on-campus', 'online', 'hybrid']
 const statusFilters = ['All', 'open', 'closed']
 
@@ -76,34 +76,34 @@ export default function Dashboard() {
   const firstName = user?.name ? user.name.split(' ')[0] : 'there'
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-12">
+    <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-12">
       {/* Header */}
-      <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
+      <div className="mb-8 sm:mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <span className="font-mono text-[13px] uppercase tracking-[0.2em] text-rust font-semibold">
+          <span className="font-mono text-xs sm:text-[13px] uppercase tracking-[0.2em] text-rust font-semibold">
             {user?.role === 'admin' ? 'Admin portal' : 'Student portal'}
           </span>
-          <h1 className="mt-2 font-display text-4xl font-semibold text-ink">
+          <h1 className="mt-2 font-display text-3xl sm:text-4xl font-semibold text-ink">
             Hi, {firstName} 👋
           </h1>
-          <p className="mt-1 font-body text-sm text-slate">
+          <p className="mt-1 font-body text-xs sm:text-sm text-slate">
             Browse and reserve your official pass for upcoming campus events.
           </p>
         </div>
-        <div className="flex gap-6 border-t border-ink/10 pt-4 md:border-t-0 md:pt-0">
-          <div>
-            <p className="font-display text-2xl font-semibold text-ink">
+        <div className="flex gap-4 sm:gap-6 border-t border-ink/10 pt-4 sm:border-t-0 sm:pt-0">
+          <div className="rounded-xl bg-paper-dim/30 px-3 py-1.5 sm:bg-transparent sm:p-0">
+            <p className="font-display text-xl sm:text-2xl font-semibold text-ink">
               {activeRegistrations.length}
             </p>
-            <p className="font-mono text-[11px] uppercase tracking-wider text-slate">
+            <p className="font-mono text-[10px] sm:text-[11px] uppercase tracking-wider text-slate">
               Active Passes
             </p>
           </div>
-          <div>
-            <p className="font-display text-2xl font-semibold text-ink">
+          <div className="rounded-xl bg-paper-dim/30 px-3 py-1.5 sm:bg-transparent sm:p-0">
+            <p className="font-display text-xl sm:text-2xl font-semibold text-ink">
               {loading ? '—' : events.filter((e) => e.status === 'open').length}
             </p>
-            <p className="font-mono text-[11px] uppercase tracking-wider text-slate">
+            <p className="font-mono text-[10px] sm:text-[11px] uppercase tracking-wider text-slate">
               Events Open
             </p>
           </div>
@@ -216,16 +216,17 @@ export default function Dashboard() {
         </div>
 
         {/* Filter Pills and Controls */}
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4 border-b border-ink/10 pb-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-[11px] uppercase tracking-wider text-slate mr-1">
+        <div className="mb-8 space-y-4 border-b border-ink/10 pb-5">
+          {/* Scrollable Category Bar on Mobile */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap no-scrollbar">
+            <span className="shrink-0 font-mono text-[11px] uppercase tracking-wider text-slate mr-1">
               Category:
             </span>
             {categories.map((c) => (
               <button
                 key={c}
                 onClick={() => setSelectedCategory(c)}
-                className={`rounded-full px-3.5 py-1 font-mono text-[11px] uppercase tracking-wider transition-colors cursor-pointer ${
+                className={`shrink-0 rounded-full px-3.5 py-1 font-mono text-[11px] uppercase tracking-wider transition-colors cursor-pointer ${
                   selectedCategory === c
                     ? 'bg-ink text-paper'
                     : 'border border-ink/15 bg-white text-slate hover:border-ink hover:text-ink'
@@ -236,46 +237,48 @@ export default function Dashboard() {
             ))}
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Mode Selector */}
-            <div className="flex items-center gap-1.5">
-              <span className="font-mono text-[11px] text-slate">Mode:</span>
-              <select
-                value={selectedMode}
-                onChange={(e) => setSelectedMode(e.target.value)}
-                className="rounded-lg border border-ink/15 bg-white px-2.5 py-1 text-xs text-ink outline-none focus:border-rust capitalize"
-              >
-                {modes.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Mode Selector */}
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono text-[11px] text-slate">Mode:</span>
+                <select
+                  value={selectedMode}
+                  onChange={(e) => setSelectedMode(e.target.value)}
+                  className="rounded-lg border border-ink/15 bg-white px-2.5 py-1 text-xs text-ink outline-none focus:border-rust capitalize"
+                >
+                  {modes.map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            {/* Status Selector */}
-            <div className="flex items-center gap-1.5">
-              <span className="font-mono text-[11px] text-slate">Status:</span>
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="rounded-lg border border-ink/15 bg-white px-2.5 py-1 text-xs text-ink outline-none focus:border-rust capitalize"
-              >
-                {statusFilters.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+              {/* Status Selector */}
+              <div className="flex items-center gap-1.5">
+                <span className="font-mono text-[11px] text-slate">Status:</span>
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="rounded-lg border border-ink/15 bg-white px-2.5 py-1 text-xs text-ink outline-none focus:border-rust capitalize"
+                >
+                  {statusFilters.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Date Sort Toggle */}
             <button
               onClick={() => setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
-              className="flex items-center gap-1 rounded-lg border border-ink/15 bg-white px-2.5 py-1 font-mono text-xs text-slate hover:text-ink cursor-pointer"
+              className="flex items-center gap-1.5 rounded-lg border border-ink/15 bg-white px-3 py-1 font-mono text-xs text-slate hover:text-ink cursor-pointer"
             >
-              <span>Date</span>
-              <span>{sortOrder === 'asc' ? '↑ Soonest' : '↓ Latest'}</span>
+              <span>Date:</span>
+              <span className="font-semibold text-ink">{sortOrder === 'asc' ? '↑ Soonest' : '↓ Latest'}</span>
             </button>
           </div>
         </div>

@@ -131,32 +131,32 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-12">
+    <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-12">
       {/* Header & Action Buttons */}
-      <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
+      <div className="mb-8 sm:mb-10 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <span className="font-mono text-[13px] uppercase tracking-[0.2em] text-rust font-semibold">
+          <span className="font-mono text-xs sm:text-[13px] uppercase tracking-[0.2em] text-rust font-semibold">
             Campus Administrator
           </span>
-          <h1 className="mt-2 font-display text-4xl font-semibold text-ink">
+          <h1 className="mt-2 font-display text-3xl sm:text-4xl font-semibold text-ink">
             Admin Dashboard
           </h1>
-          <p className="mt-1 font-body text-sm text-slate">
+          <p className="mt-1 font-body text-xs sm:text-sm text-slate">
             Real-time management for events, seat reservations, and student registrations.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
           <button
             onClick={handleExportAllCSV}
             disabled={isExporting}
-            className="rounded-full border border-ink/20 bg-white px-5 py-3 font-body text-xs font-semibold text-ink transition-colors hover:border-ink hover:bg-ink/5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-2xs"
+            className="text-center rounded-full border border-ink/20 bg-white px-5 py-3 font-body text-xs font-semibold text-ink transition-colors hover:border-ink hover:bg-ink/5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-2xs"
           >
             {isExporting ? 'Exporting...' : '📥 Export All Attendee Roster (CSV)'}
           </button>
           <Link
             to="/admin/events/new"
-            className="rounded-full bg-ink px-6 py-3 font-body text-sm font-semibold text-paper transition-colors hover:bg-ink-light cursor-pointer shadow-sm"
+            className="text-center rounded-full bg-ink px-6 py-3 font-body text-sm font-semibold text-paper transition-colors hover:bg-ink-light cursor-pointer shadow-sm"
           >
             + Create New Event
           </Link>
@@ -374,30 +374,30 @@ export default function AdminDashboard() {
                       Seats: {left} / {total} Available
                     </p>
 
-                    <div className="flex flex-wrap gap-2 pt-3 border-t border-ink/10">
+                    <div className="grid grid-cols-2 gap-2 pt-3 border-t border-ink/10">
                       <Link
                         to={`/admin/events/${eventId}/registrants`}
-                        className="flex-1 text-center rounded-full border border-ink/20 py-1.5 font-mono text-[11px] uppercase font-semibold text-ink"
+                        className="text-center rounded-full border border-ink/20 py-2 font-mono text-[11px] uppercase font-semibold text-ink hover:bg-ink hover:text-paper transition-colors"
                       >
                         Registrants
                       </Link>
                       <button
                         type="button"
                         onClick={() => handleToggleStatus(e)}
-                        className="flex-1 text-center rounded-full border border-ink/20 py-1.5 font-mono text-[11px] uppercase font-semibold text-ink"
+                        className="text-center rounded-full border border-ink/20 py-2 font-mono text-[11px] uppercase font-semibold text-ink hover:bg-ink hover:text-paper transition-colors"
                       >
                         {isClosed ? 'Reopen' : 'Close'}
                       </button>
                       <Link
                         to={`/admin/events/${eventId}/edit`}
-                        className="flex-1 text-center rounded-full border border-amber py-1.5 font-mono text-[11px] uppercase font-semibold text-ink"
+                        className="text-center rounded-full border border-amber py-2 font-mono text-[11px] uppercase font-semibold text-ink hover:bg-amber transition-colors"
                       >
                         Edit
                       </Link>
                       <button
                         type="button"
                         onClick={() => setDeleteTarget(e)}
-                        className="flex-1 text-center rounded-full border border-rust/30 py-1.5 font-mono text-[11px] uppercase font-semibold text-rust"
+                        className="text-center rounded-full border border-rust/30 py-2 font-mono text-[11px] uppercase font-semibold text-rust hover:bg-rust hover:text-paper transition-colors"
                       >
                         Delete
                       </button>

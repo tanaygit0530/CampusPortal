@@ -162,7 +162,7 @@ export default function EventRegistrants() {
   const totalCapacity = event?.totalSeats || event?.seatsTotal || 0
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-12">
+    <div className="mx-auto max-w-6xl px-4 sm:px-6 py-8 sm:py-12">
       <Link
         to="/admin"
         className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-slate transition-colors hover:text-ink"
@@ -177,25 +177,25 @@ export default function EventRegistrants() {
       )}
 
       {/* Event Overview Banner */}
-      <div className="mt-6 rounded-3xl border border-ink/10 bg-white p-8 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="mt-6 rounded-3xl border border-ink/10 bg-white p-5 sm:p-8 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
           <div>
             <span className="font-mono text-xs uppercase tracking-widest text-rust font-semibold">
               {event?.category} · {event?.mode || 'on-campus'}
             </span>
-            <h1 className="mt-2 font-display text-3xl font-semibold text-ink">{event?.title}</h1>
+            <h1 className="mt-2 font-display text-2xl sm:text-3xl font-semibold text-ink">{event?.title}</h1>
             <p className="mt-1 font-mono text-xs text-slate">
               📅 {event?.date} · ⏰ {event?.time || '10:00 AM'} · 📍 {event?.venue}
             </p>
           </div>
 
-          <div className="flex items-center gap-6">
-            <div className="text-right">
-              <p className="font-display text-3xl font-semibold text-ink">
+          <div className="flex flex-wrap sm:flex-nowrap items-center justify-between sm:justify-end w-full sm:w-auto gap-4 sm:gap-6 pt-4 sm:pt-0 border-t sm:border-t-0 border-ink/10">
+            <div className="text-left sm:text-right">
+              <p className="font-display text-2xl sm:text-3xl font-semibold text-ink">
                 {registrants.length}{' '}
                 <span className="text-base font-normal text-slate">/ {totalCapacity}</span>
               </p>
-              <p className="font-mono text-[11px] uppercase tracking-wider text-slate">
+              <p className="font-mono text-[10px] sm:text-[11px] uppercase tracking-wider text-slate">
                 Confirmed Attendees
               </p>
             </div>

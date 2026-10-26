@@ -27,32 +27,32 @@ export default function Home() {
   return (
     <div>
       {/* Hero */}
-      <section className="mx-auto max-w-6xl px-6 pt-16 pb-20 md:pt-24 md:pb-28">
-        <div className="grid gap-12 md:grid-cols-[1.3fr_1fr] md:items-end">
+      <section className="mx-auto max-w-6xl px-4 sm:px-6 pt-12 pb-16 sm:pt-16 sm:pb-20 md:pt-24 md:pb-28">
+        <div className="grid gap-10 md:gap-12 md:grid-cols-[1.3fr_1fr] md:items-end">
           <div>
-            <span className="font-mono text-[13px] uppercase tracking-[0.2em] text-rust">
+            <span className="font-mono text-xs sm:text-[13px] uppercase tracking-[0.2em] text-rust font-semibold">
               Academic Year 2026–27
             </span>
-            <h1 className="mt-4 font-display text-5xl font-semibold leading-[1.05] tracking-tight text-ink md:text-6xl">
+            <h1 className="mt-3 sm:mt-4 font-display text-4xl sm:text-5xl md:text-6xl font-semibold leading-[1.08] tracking-tight text-ink">
               Where campus
               <br />
               shows up.
             </h1>
-            <p className="mt-6 max-w-md font-body text-base leading-relaxed text-slate">
+            <p className="mt-4 sm:mt-6 max-w-md font-body text-sm sm:text-base leading-relaxed text-slate">
               One portal to browse every fest, seminar, match and workshop on campus — with instant,
               real-time digital passes.
             </p>
-            <div className="mt-8 flex flex-wrap gap-4">
+            <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4">
               <Link
                 to={isAuthenticated && user?.role === 'admin' ? '/admin' : '/dashboard'}
-                className="rounded-full bg-ink px-6 py-3 font-body text-sm font-semibold text-paper transition-colors hover:bg-ink-light"
+                className="w-full sm:w-auto text-center rounded-full bg-ink px-6 py-3 font-body text-sm font-semibold text-paper transition-colors hover:bg-ink-light shadow-sm"
               >
                 {isAuthenticated && user?.role === 'admin' ? 'Admin Dashboard' : 'Browse events'}
               </Link>
               {!isAuthenticated ? (
                 <Link
                   to="/login"
-                  className="rounded-full border border-ink/20 px-6 py-3 font-body text-sm font-semibold text-ink transition-colors hover:border-ink"
+                  className="w-full sm:w-auto text-center rounded-full border border-ink/20 px-6 py-3 font-body text-sm font-semibold text-ink transition-colors hover:border-ink hover:bg-ink/5"
                 >
                   Log in / Sign up
                 </Link>
@@ -60,7 +60,7 @@ export default function Home() {
                 user?.role === 'student' && (
                   <Link
                     to="/profile"
-                    className="rounded-full border border-ink/20 px-6 py-3 font-body text-sm font-semibold text-ink transition-colors hover:border-ink"
+                    className="w-full sm:w-auto text-center rounded-full border border-ink/20 px-6 py-3 font-body text-sm font-semibold text-ink transition-colors hover:border-ink hover:bg-ink/5"
                   >
                     My Pass Profile
                   </Link>
@@ -69,13 +69,13 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4 border-t border-ink/10 pt-6 md:border-t-0 md:border-l md:pl-8 md:pt-0">
+          <div className="grid grid-cols-3 gap-3 sm:gap-4 border-t border-ink/10 pt-6 md:border-t-0 md:border-l md:pl-8 md:pt-0">
             {displayStats.map((s) => (
               <div key={s.label} className="md:col-span-3">
-                <p className="font-display text-3xl font-semibold text-ink transition-all duration-300">
+                <p className="font-display text-2xl sm:text-3xl font-semibold text-ink transition-all duration-300">
                   {s.value}
                 </p>
-                <p className="mt-1 font-mono text-[11px] uppercase tracking-wider text-slate">
+                <p className="mt-1 font-mono text-[10px] sm:text-[11px] uppercase tracking-wider text-slate">
                   {s.label}
                 </p>
               </div>

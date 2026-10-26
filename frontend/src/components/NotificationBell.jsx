@@ -57,7 +57,7 @@ export default function NotificationBell() {
 
       {/* Notification Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border border-ink/10 bg-white p-4 shadow-2xl z-50 animate-fade-in">
+        <div className="absolute -right-8 sm:right-0 mt-2 w-[calc(100vw-2.5rem)] max-w-sm sm:w-96 rounded-2xl border border-ink/10 bg-white p-4 shadow-2xl z-50 animate-fade-in">
           <div className="flex items-center justify-between border-b border-ink/10 pb-3">
             <div className="flex items-center gap-2">
               <span className="font-display text-sm font-semibold text-ink">Live Notifications</span>

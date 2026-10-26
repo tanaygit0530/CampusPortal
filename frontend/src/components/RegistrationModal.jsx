@@ -314,28 +314,28 @@ export default function RegistrationModal({ isOpen, onClose, event, onSuccess })
                   {teammates.map((tm, idx) => (
                     <div
                       key={idx}
-                      className="flex flex-wrap items-center gap-2 rounded-xl bg-white p-3 border border-ink/10"
+                      className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 rounded-xl bg-white p-3 border border-ink/10"
                     >
                       <input
                         type="text"
                         placeholder={`Teammate ${idx + 2} Full Name`}
                         value={tm.name}
                         onChange={(e) => handleTeammateChange(idx, 'name', e.target.value)}
-                        className="flex-1 rounded-lg border border-ink/10 px-3 py-1.5 text-xs outline-none focus:border-rust"
+                        className="w-full sm:flex-1 rounded-lg border border-ink/10 px-3 py-1.5 text-xs outline-none focus:border-rust"
                       />
                       <input
                         type="email"
                         placeholder="Teammate Email"
                         value={tm.email}
                         onChange={(e) => handleTeammateChange(idx, 'email', e.target.value)}
-                        className="flex-1 rounded-lg border border-ink/10 px-3 py-1.5 text-xs outline-none focus:border-rust"
+                        className="w-full sm:flex-1 rounded-lg border border-ink/10 px-3 py-1.5 text-xs outline-none focus:border-rust"
                       />
                       <button
                         type="button"
                         onClick={() => handleRemoveTeammate(idx)}
-                        className="text-rust text-xs font-bold px-2 py-1 hover:underline cursor-pointer"
+                        className="text-rust text-xs font-semibold px-2 py-1 hover:underline cursor-pointer self-end sm:self-center"
                       >
-                        Remove
+                        ✕ Remove
                       </button>
                     </div>
                   ))}

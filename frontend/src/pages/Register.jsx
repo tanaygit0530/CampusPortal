@@ -93,9 +93,9 @@ export default function Register() {
       </div>
 
       {/* Right form panel */}
-      <div className="flex items-center justify-center p-8 md:p-12">
+      <div className="flex items-center justify-center p-5 sm:p-8 md:p-12">
         <div className="w-full max-w-sm">
-          <h1 className="font-display text-3xl font-semibold text-ink">Create student account</h1>
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold text-ink">Create student account</h1>
           <p className="mt-2 text-sm text-slate">
             Enter your college details below to start reserving event passes.
           </p>

@@ -93,9 +93,9 @@ export default function Login() {
       </div>
 
       {/* Right form panel */}
-      <div className="flex items-center justify-center p-8 md:p-12">
+      <div className="flex items-center justify-center p-5 sm:p-8 md:p-12">
         <div className="w-full max-w-sm">
-          <h1 className="font-display text-3xl font-semibold text-ink">Welcome back</h1>
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold text-ink">Welcome back</h1>
           <p className="mt-2 text-sm text-slate">
             Log in with your college credentials to access your dashboard.
           </p>

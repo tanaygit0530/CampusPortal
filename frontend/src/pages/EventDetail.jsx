@@ -87,7 +87,7 @@ export default function EventDetail() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-12">
+    <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8 sm:py-12">
       <Link
         to="/dashboard"
         className="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-wider text-slate transition-colors hover:text-ink"
@@ -96,8 +96,8 @@ export default function EventDetail() {
       </Link>
 
       {toastMessage && (
-        <div className="mt-4 flex items-center justify-between rounded-xl bg-amber/20 px-5 py-3 border border-amber/40 text-ink">
-          <p className="text-sm font-semibold">ℹ️ {toastMessage}</p>
+        <div className="mt-4 flex items-center justify-between rounded-xl bg-amber/20 px-4 sm:px-5 py-3 border border-amber/40 text-ink">
+          <p className="text-xs sm:text-sm font-semibold">ℹ️ {toastMessage}</p>
           <button onClick={() => setToastMessage(null)} className="text-xs font-bold text-ink cursor-pointer">
             ✕
           </button>
@@ -106,7 +106,7 @@ export default function EventDetail() {
 
       <div className="mt-6 overflow-hidden rounded-3xl border border-ink/10 bg-white shadow-lg">
         {/* Banner Header Image / Gradient Fallback */}
-        <div className="relative h-64 sm:h-80 w-full overflow-hidden bg-ink">
+        <div className="relative h-56 sm:h-80 w-full overflow-hidden bg-ink">
           {event.bannerUrl ? (
             <img
               src={event.bannerUrl}
@@ -114,29 +114,29 @@ export default function EventDetail() {
               className="h-full w-full object-cover opacity-85 transition-transform duration-500 hover:scale-105"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-r from-ink via-rust/70 to-amber/80 p-8 text-paper">
-              <span className="font-display text-4xl font-semibold text-center">{event.title}</span>
+            <div className="flex h-full w-full items-center justify-center bg-gradient-to-r from-ink via-rust/70 to-amber/80 p-6 sm:p-8 text-paper">
+              <span className="font-display text-2xl sm:text-4xl font-semibold text-center">{event.title}</span>
             </div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/40 to-transparent" />
 
           {/* Floating Badges */}
-          <div className="absolute bottom-6 left-6 right-6 flex flex-wrap items-end justify-between gap-4 text-paper">
+          <div className="absolute bottom-4 left-4 right-4 sm:bottom-6 sm:left-6 sm:right-6 flex flex-wrap items-end justify-between gap-3 text-paper">
             <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-amber px-3 py-1 font-mono text-xs font-semibold uppercase text-ink">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <span className="rounded-full bg-amber px-2.5 sm:px-3 py-0.5 sm:py-1 font-mono text-[10px] sm:text-xs font-semibold uppercase text-ink">
                   {event.category || 'Event'}
                 </span>
-                <span className="rounded-full bg-paper/20 px-3 py-1 font-mono text-xs font-semibold uppercase text-paper backdrop-blur-sm capitalize">
+                <span className="rounded-full bg-paper/20 px-2.5 sm:px-3 py-0.5 sm:py-1 font-mono text-[10px] sm:text-xs font-semibold uppercase text-paper backdrop-blur-sm capitalize">
                   {event.mode || 'on-campus'}
                 </span>
-                <span className="rounded-full bg-rust px-3 py-1 font-mono text-xs font-semibold uppercase text-paper">
+                <span className="rounded-full bg-rust px-2.5 sm:px-3 py-0.5 sm:py-1 font-mono text-[10px] sm:text-xs font-semibold uppercase text-paper">
                   {event.isTeamEvent
                     ? `Team (${event.minTeamSize || 2}–${event.maxTeamSize || 4})`
                     : 'Individual'}
                 </span>
               </div>
-              <h1 className="mt-3 font-display text-3xl sm:text-4xl font-semibold text-paper leading-tight">
+              <h1 className="mt-2 sm:mt-3 font-display text-2xl sm:text-4xl font-semibold text-paper leading-tight">
                 {event.title}
               </h1>
               {event.tagline && (
@@ -151,9 +151,9 @@ export default function EventDetail() {
         </div>
 
         {/* Details Grid */}
-        <div className="p-6 sm:p-10 space-y-8">
+        <div className="p-5 sm:p-10 space-y-6 sm:space-y-8">
           {/* Key Quick Info Strip */}
-          <div className="grid gap-4 rounded-2xl border border-ink/10 bg-paper-dim/40 p-5 sm:grid-cols-4">
+          <div className="grid gap-3 sm:gap-4 rounded-2xl border border-ink/10 bg-paper-dim/40 p-4 sm:p-5 grid-cols-2 md:grid-cols-4">
             <div>
               <p className="font-mono text-[11px] uppercase tracking-wider text-slate">Date & Time</p>
               <p className="mt-1 font-display text-base font-semibold text-ink">{event.date}</p>
