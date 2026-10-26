@@ -30,6 +30,8 @@ const registrationRoutes = require('./routes/registrationRoutes')
 const { router: statsRoutes, computeStats } = require('./routes/statsRoutes')
 
 const app = express()
+// Trust first proxy (Render / Cloudflare / Vercel) for express-rate-limit and secure headers
+app.set('trust proxy', 1)
 const server = http.createServer(app)
 
 // 2. CORS and Allowed Origins Configuration
@@ -159,7 +161,7 @@ app.use('/api/auth/register', authLimiter)
 app.use(express.json())
 
 // 7. Database Connection & Admin Bootstrap
-const mongoURI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/CampusPassDB'
+const mongoURI = (process.env.MONGO_URI || '').trim() || 'mongodb://127.0.0.1:27017/CampusPassDB'
 
 const bootstrapAdmin = async () => {
   try {
