@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { fetchEventsApi } from '../api/eventsApi'
+import api from '../api/axiosInstance'
 
 export default function useFetchEvents() {
   const [events, setEvents] = useState([])
@@ -10,10 +10,10 @@ export default function useFetchEvents() {
     setLoading(true)
     setError(null)
     try {
-      const response = await fetchEventsApi()
-      setEvents(response.data)
+      const response = await api.get('/events')
+      setEvents(response.data || [])
     } catch (err) {
-      setError(err.message || 'Something went wrong while loading events.')
+      setError(err?.response?.data?.message || err.message || 'Failed to load events')
     } finally {
       setLoading(false)
     }

@@ -1,100 +1,60 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import useForm from '../hooks/useForm'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/axiosInstance'
 
-// Simple validation function passed into useForm — same shape works for
-// Register, Create Event, etc. Keeps validation rules out of the JSX.
-function validateLogin(values, isRegister) {
+function validateLogin(values) {
   const errors = {}
-  if (isRegister && !values.name.trim()) errors.name = 'Name is required'
-  if (!values.email.trim()) {
-    errors.email = 'Email is required'
+  if (!values.email?.trim()) {
+    errors.email = 'Email address is required'
   } else if (!/^\S+@\S+\.\S+$/.test(values.email)) {
-    errors.email = 'Enter a valid email'
+    errors.email = 'Enter a valid email address'
   }
   if (!values.password) {
     errors.password = 'Password is required'
-  } else if (values.password.length < 6) {
-    errors.password = 'Must be at least 6 characters'
   }
   return errors
 }
 
 export default function Login() {
-  const [role, setRole] = useState('student')
-  const [isRegister, setIsRegister] = useState(false)
-  const [formError, setFormError] = useState(null)
+  const [serverError, setServerError] = useState(null)
   const navigate = useNavigate()
+  const location = useLocation()
   const { login } = useAuth()
 
+  // Check if redirected due to session expiry
+  const searchParams = new URLSearchParams(location.search)
+  const isExpired = searchParams.get('expired') === 'true'
+
   const { values, errors, submitting, handleChange, handleSubmit } = useForm(
-    { name: '', email: '', password: '' },
-    (v) => validateLogin(v, isRegister)
+    { email: '', password: '' },
+    validateLogin
   )
 
-  const onValid = async () => {
-    setFormError(null)
+  const onValid = async (formValues) => {
+    setServerError(null)
     try {
-      let loggedInUser = null
-      let receivedToken = null
+      const response = await api.post('/auth/login', {
+        email: formValues.email.trim(),
+        password: formValues.password,
+      })
 
-      if (isRegister) {
-        try {
-          const regRes = await api.post('/auth/register', {
-            name: values.name,
-            email: values.email,
-            password: values.password,
-            role,
-          })
-          loggedInUser = regRes.data
-        } catch (regErr) {
-          console.warn('Register fallback:', regErr.message)
-        }
-      }
+      const { token, user } = response.data
+      login(user, token)
 
-      // Authenticate against /api/auth/login to acquire signed JWT token
-      try {
-        const loginRes = await api.post('/auth/login', {
-          email: values.email,
-          password: values.password || 'password123',
-        })
-        receivedToken = loginRes.data.token
-        loggedInUser = loginRes.data.user
-      } catch (authErr) {
-        console.warn('Backend /auth/login notice:', authErr.message)
-        // Fallback to /users endpoint if user was seeded without bcrypt hash
-        try {
-          const usersRes = await api.get('/users')
-          const found = usersRes.data.find((u) => u.email === values.email)
-          if (found) {
-            loggedInUser = { id: found._id, name: found.name, email: found.email, role: found.role }
-          }
-        } catch {
-          // Local fallback
-        }
-      }
-
-      if (!loggedInUser) {
-        loggedInUser = {
-          id: `USR-${Date.now()}`,
-          name: values.name || (role === 'admin' ? 'Admin User' : 'Student User'),
-          email: values.email,
-          role,
-        }
-      }
-
-      login(loggedInUser, receivedToken)
-
-      if (role === 'admin' || loggedInUser.role === 'admin') {
+      if (user.role === 'admin') {
         navigate('/admin')
       } else {
         navigate('/dashboard')
       }
     } catch (err) {
       console.error('Login error:', err)
-      setFormError(err.response?.data?.error || err.response?.data?.message || 'Authentication failed. Please check backend connection.')
+      const message =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        'Unable to connect to server. Please try again.'
+      setServerError(message)
     }
   }
 
@@ -109,13 +69,13 @@ export default function Login() {
             backgroundSize: '24px 24px',
           }}
         />
-        <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-amber font-display text-lg text-ink">
+        <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-amber font-display text-lg text-ink font-bold">
           C
         </span>
 
         <div className="relative">
           <p className="font-mono text-[13px] uppercase tracking-[0.2em] text-amber">
-            Access pass
+            Campus Access Portal
           </p>
           <h2 className="mt-4 font-display text-4xl font-semibold leading-tight">
             Your seat at
@@ -125,8 +85,7 @@ export default function Login() {
             one login away.
           </h2>
           <p className="mt-6 max-w-sm text-sm leading-relaxed text-paper/70">
-            Students register and track registrations. Admins create events and manage
-            headcount — same door, different key.
+            Real-time campus pass system backed by authoritative MongoDB records and live WebSockets.
           </p>
         </div>
 
@@ -136,79 +95,60 @@ export default function Login() {
       {/* Right form panel */}
       <div className="flex items-center justify-center p-8 md:p-12">
         <div className="w-full max-w-sm">
-          <h1 className="font-display text-3xl font-semibold text-ink">
-            {isRegister ? 'Create account' : 'Welcome back'}
-          </h1>
+          <h1 className="font-display text-3xl font-semibold text-ink">Welcome back</h1>
           <p className="mt-2 text-sm text-slate">
-            {isRegister ? 'Set up your CampusPass account.' : 'Log in to continue to CampusPass.'}
+            Log in with your college credentials to access your dashboard.
           </p>
 
-          {/* Role tabs */}
-          <div className="mt-6 flex rounded-full border border-ink/10 bg-paper-dim p-1">
-            {['student', 'admin'].map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => setRole(r)}
-                className={`flex-1 rounded-full py-2 text-sm font-semibold capitalize transition-colors ${
-                  role === r ? 'bg-ink text-paper' : 'text-slate hover:text-ink'
-                }`}
-              >
-                {r}
-              </button>
-            ))}
-          </div>
+          {isExpired && !serverError && (
+            <div className="mt-4 rounded-xl border border-amber/40 bg-amber/10 p-3 text-xs font-semibold text-ink">
+              Your session has expired. Please log in again to continue.
+            </div>
+          )}
 
-          {formError && (
-            <p className="mt-4 rounded-lg bg-rust/10 px-3 py-2 text-sm text-rust">{formError}</p>
+          {serverError && (
+            <div className="mt-4 rounded-xl border border-rust/30 bg-rust/10 p-3 text-xs font-semibold text-rust">
+              {serverError}
+            </div>
           )}
 
           <form className="mt-6 space-y-4" onSubmit={handleSubmit(onValid)} noValidate>
-            {isRegister && (
-              <div>
-                <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
-                  Full name
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={values.name}
-                  onChange={handleChange}
-                  placeholder="Ananya Sharma"
-                  className={`w-full rounded-lg border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust ${
-                    errors.name ? 'border-rust' : 'border-ink/15'
-                  }`}
-                />
-                {errors.name && <p className="mt-1 text-xs text-rust">{errors.name}</p>}
-              </div>
-            )}
             <div>
-              <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
-                {role === 'admin' ? 'Admin email' : 'College email'}
+              <label
+                htmlFor="login-email"
+                className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+              >
+                Email Address
               </label>
               <input
+                id="login-email"
                 type="email"
                 name="email"
                 value={values.email}
                 onChange={handleChange}
-                placeholder={role === 'admin' ? 'admin@college.edu' : 'you@college.edu'}
-                className={`w-full rounded-lg border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust ${
+                placeholder="your.email@college.edu"
+                className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust ${
                   errors.email ? 'border-rust' : 'border-ink/15'
                 }`}
               />
               {errors.email && <p className="mt-1 text-xs text-rust">{errors.email}</p>}
             </div>
+
             <div>
-              <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
+              <label
+                htmlFor="login-password"
+                className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+              >
                 Password
               </label>
               <input
+                id="login-password"
                 type="password"
                 name="password"
                 value={values.password}
                 onChange={handleChange}
                 placeholder="••••••••"
-                className={`w-full rounded-lg border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust ${
+                className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust ${
                   errors.password ? 'border-rust' : 'border-ink/15'
                 }`}
               />
@@ -218,24 +158,17 @@ export default function Login() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-full bg-ink py-3 text-sm font-semibold text-paper transition-colors hover:bg-ink-light disabled:opacity-60"
+              className="w-full rounded-full bg-ink py-3 text-sm font-semibold text-paper transition-colors hover:bg-ink-light disabled:opacity-60 cursor-pointer"
             >
-              {submitting
-                ? 'Please wait…'
-                : isRegister
-                  ? 'Create account'
-                  : `Log in as ${role}`}
+              {submitting ? 'Authenticating…' : 'Log In'}
             </button>
           </form>
 
           <p className="mt-6 text-center text-sm text-slate">
-            {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
-            <button
-              onClick={() => setIsRegister(!isRegister)}
-              className="font-semibold text-rust hover:underline"
-            >
-              {isRegister ? 'Log in' : 'Register'}
-            </button>
+            Don't have an account yet?{' '}
+            <Link to="/register" className="font-semibold text-rust hover:underline">
+              Sign up as a student
+            </Link>
           </p>
         </div>
       </div>

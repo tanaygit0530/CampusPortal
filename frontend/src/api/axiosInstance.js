@@ -1,7 +1,6 @@
 import axios from 'axios'
 
-// Centralized Axios instance so baseURL / headers / interceptors live in one place.
-// In Exp 4 this will point at the real Express server (e.g. http://localhost:5000/api).
+// Centralized Axios instance pointing to the Express server
 const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 const resolvedBaseUrl = rawApiUrl.endsWith('/api')
   ? rawApiUrl
@@ -9,21 +8,36 @@ const resolvedBaseUrl = rawApiUrl.endsWith('/api')
 
 const api = axios.create({
   baseURL: resolvedBaseUrl,
-  timeout: 8000,
+  timeout: 10000,
 })
 
-// Request interceptor — attaches the JWT once auth exists (Exp 6).
+// Request interceptor — attaches the JWT token automatically
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
-  if (token) config.headers.Authorization = `Bearer ${token}`
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
   return config
 })
 
-// Response interceptor — centralised error handling instead of try/catch everywhere.
+// Response interceptor — handle 401 Unauthorized globally
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('API error:', error?.response?.data?.message || error.message)
+    if (error?.response?.status === 401) {
+      // Clear expired credentials
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+
+      // Avoid redirect loops if already on login or register
+      if (
+        typeof window !== 'undefined' &&
+        !window.location.pathname.startsWith('/login') &&
+        !window.location.pathname.startsWith('/register')
+      ) {
+        window.location.href = '/login?expired=true'
+      }
+    }
     return Promise.reject(error)
   }
 )

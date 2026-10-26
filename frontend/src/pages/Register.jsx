@@ -6,9 +6,9 @@ import api from '../api/axiosInstance'
 
 function validateRegister(values) {
   const errors = {}
-  if (!values.name.trim()) errors.name = 'Full name is required'
-  if (!values.email.trim()) {
-    errors.email = 'College email is required'
+  if (!values.name?.trim()) errors.name = 'Full name is required'
+  if (!values.email?.trim()) {
+    errors.email = 'Email address is required'
   } else if (!/^\S+@\S+\.\S+$/.test(values.email)) {
     errors.email = 'Enter a valid email address'
   }
@@ -26,40 +26,35 @@ function validateRegister(values) {
 }
 
 export default function Register() {
-  const [formError, setFormError] = useState(null)
+  const [serverError, setServerError] = useState(null)
   const navigate = useNavigate()
   const { login } = useAuth()
 
   const { values, errors, submitting, handleChange, handleSubmit } = useForm(
-    { name: '', email: '', password: '', confirmPassword: '', role: 'student' },
+    { name: '', email: '', password: '', confirmPassword: '' },
     validateRegister
   )
 
   const onValid = async (formValues) => {
-    setFormError(null)
+    setServerError(null)
     try {
-      // Send real POST request to MongoDB backend
-      const response = await api.post('/users', {
-        name: formValues.name,
-        email: formValues.email,
+      // Send real POST request to /api/auth/register (Public signup creates student only)
+      const response = await api.post('/auth/register', {
+        name: formValues.name.trim(),
+        email: formValues.email.trim(),
         password: formValues.password,
-        role: formValues.role || 'student',
       })
-      const savedUser = response.data
-      login({
-        id: savedUser._id,
-        name: savedUser.name,
-        email: savedUser.email,
-        role: savedUser.role,
-      })
-      if (savedUser.role === 'admin') {
-        navigate('/admin')
-      } else {
-        navigate('/dashboard')
-      }
+
+      const { token, user } = response.data
+      login(user, token)
+      navigate('/dashboard')
     } catch (err) {
-      console.error('API registration error:', err)
-      setFormError(err.response?.data?.error || 'Account creation failed. Please check backend connection.')
+      console.error('Registration error:', err)
+      const message =
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        'Registration failed. Please check your network connection.'
+      setServerError(message)
     }
   }
 
@@ -74,7 +69,7 @@ export default function Register() {
             backgroundSize: '24px 24px',
           }}
         />
-        <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-amber font-display text-lg text-ink">
+        <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-amber font-display text-lg text-ink font-bold">
           C
         </span>
 
@@ -90,7 +85,7 @@ export default function Register() {
             place at every event.
           </h2>
           <p className="mt-6 max-w-sm text-sm leading-relaxed text-paper/70">
-            Create an account to browse campus fests, hackathons, seminars, and sports meets with instant digital pass issuance.
+            Sign up for instant digital stubs, live seat availability, and event registrations.
           </p>
         </div>
 
@@ -100,67 +95,33 @@ export default function Register() {
       {/* Right form panel */}
       <div className="flex items-center justify-center p-8 md:p-12">
         <div className="w-full max-w-sm">
-          <h1 className="font-display text-3xl font-semibold text-ink">Create an account</h1>
-          <p className="mt-2 text-sm text-slate">Enter your details and select your role to set up your CampusPass account.</p>
+          <h1 className="font-display text-3xl font-semibold text-ink">Create student account</h1>
+          <p className="mt-2 text-sm text-slate">
+            Enter your college details below to start reserving event passes.
+          </p>
 
-          {formError && (
-            <p className="mt-4 rounded-lg bg-rust/10 px-3 py-2 text-sm text-rust">{formError}</p>
+          {serverError && (
+            <div className="mt-4 rounded-xl border border-rust/30 bg-rust/10 p-3 text-xs font-semibold text-rust">
+              {serverError}
+            </div>
           )}
 
           <form className="mt-6 space-y-4" onSubmit={handleSubmit(onValid)} noValidate>
             <div>
-              <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
-                Register As (Account Role)
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <label
-                  className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border p-2.5 font-mono text-xs font-semibold transition-all ${
-                    values.role === 'student'
-                      ? 'border-rust bg-rust/10 text-rust shadow-sm'
-                      : 'border-ink/15 bg-white text-slate hover:border-ink/30'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="role"
-                    value="student"
-                    checked={values.role === 'student'}
-                    onChange={handleChange}
-                    className="sr-only"
-                  />
-                  <span>🎓 Student</span>
-                </label>
-                <label
-                  className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border p-2.5 font-mono text-xs font-semibold transition-all ${
-                    values.role === 'admin'
-                      ? 'border-ink bg-ink text-paper shadow-sm'
-                      : 'border-ink/15 bg-white text-slate hover:border-ink/30'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="role"
-                    value="admin"
-                    checked={values.role === 'admin'}
-                    onChange={handleChange}
-                    className="sr-only"
-                  />
-                  <span>⚡ Admin / Faculty</span>
-                </label>
-              </div>
-            </div>
-
-            <div>
-              <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
+              <label
+                htmlFor="reg-fullname"
+                className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+              >
                 Full Name
               </label>
               <input
+                id="reg-fullname"
                 type="text"
                 name="name"
                 value={values.name}
                 onChange={handleChange}
-                placeholder="Ananya Sharma"
-                className={`w-full rounded-lg border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust ${
+                placeholder="Your full name"
+                className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust ${
                   errors.name ? 'border-rust' : 'border-ink/15'
                 }`}
               />
@@ -168,16 +129,20 @@ export default function Register() {
             </div>
 
             <div>
-              <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
+              <label
+                htmlFor="reg-collegemail"
+                className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+              >
                 College Email
               </label>
               <input
+                id="reg-collegemail"
                 type="email"
                 name="email"
                 value={values.email}
                 onChange={handleChange}
-                placeholder="you@college.edu"
-                className={`w-full rounded-lg border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust ${
+                placeholder="your.email@college.edu"
+                className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust ${
                   errors.email ? 'border-rust' : 'border-ink/15'
                 }`}
               />
@@ -185,16 +150,20 @@ export default function Register() {
             </div>
 
             <div>
-              <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
+              <label
+                htmlFor="reg-pwd"
+                className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+              >
                 Password
               </label>
               <input
+                id="reg-pwd"
                 type="password"
                 name="password"
                 value={values.password}
                 onChange={handleChange}
                 placeholder="••••••••"
-                className={`w-full rounded-lg border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust ${
+                className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust ${
                   errors.password ? 'border-rust' : 'border-ink/15'
                 }`}
               />
@@ -202,16 +171,20 @@ export default function Register() {
             </div>
 
             <div>
-              <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
+              <label
+                htmlFor="reg-confirmpwd"
+                className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+              >
                 Confirm Password
               </label>
               <input
+                id="reg-confirmpwd"
                 type="password"
                 name="confirmPassword"
                 value={values.confirmPassword}
                 onChange={handleChange}
                 placeholder="••••••••"
-                className={`w-full rounded-lg border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust ${
+                className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust ${
                   errors.confirmPassword ? 'border-rust' : 'border-ink/15'
                 }`}
               />
@@ -223,9 +196,9 @@ export default function Register() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full rounded-full bg-ink py-3 text-sm font-semibold text-paper transition-colors hover:bg-ink-light disabled:opacity-60"
+              className="w-full rounded-full bg-ink py-3 text-sm font-semibold text-paper transition-colors hover:bg-ink-light disabled:opacity-60 cursor-pointer"
             >
-              {submitting ? 'Creating account…' : 'Create Account'}
+              {submitting ? 'Creating account…' : 'Sign Up as Student'}
             </button>
           </form>
 

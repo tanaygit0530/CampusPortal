@@ -3,30 +3,36 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import useForm from '../../hooks/useForm'
 import { useEvents } from '../../context/EventContext'
 
-const categories = ['Technical', 'Cultural', 'Sports', 'Workshop', 'Seminar']
-const modes = ['On-campus', 'Online', 'Hybrid']
+const categories = ['Technical', 'Cultural', 'Sports', 'Workshop', 'Seminar', 'Other']
+const modes = ['on-campus', 'online', 'hybrid']
 
 function validateEvent(values) {
   const errors = {}
-  if (!values.title.trim()) errors.title = 'Title is required'
-  if (!values.tagline.trim()) errors.tagline = 'Tagline is required'
-  if (!values.description.trim()) errors.description = 'Description is required'
+  if (!values.title?.trim()) errors.title = 'Title is required'
+  if (!values.description?.trim()) errors.description = 'Description is required'
   if (!values.category) errors.category = 'Category is required'
-  if (!values.date.trim()) errors.date = 'Date is required'
-  if (!values.time.trim()) errors.time = 'Time is required'
-  if (!values.venue.trim()) errors.venue = 'Venue is required'
+  if (!values.date?.trim()) errors.date = 'Event date is required'
+  if (!values.venue?.trim()) errors.venue = 'Venue is required'
 
   if (!values.totalSeats) {
     errors.totalSeats = 'Total seats is required'
   } else if (isNaN(values.totalSeats) || Number(values.totalSeats) <= 0) {
-    errors.totalSeats = 'Total seats must be a positive number'
+    errors.totalSeats = 'Total seats must be a positive integer'
+  }
+
+  if (values.registrationDeadline && values.date) {
+    const deadline = new Date(values.registrationDeadline)
+    const eventDate = new Date(values.date)
+    if (!isNaN(deadline) && !isNaN(eventDate) && deadline > eventDate) {
+      errors.registrationDeadline = 'Deadline must be before or on the event date'
+    }
   }
 
   if (values.isTeamEvent) {
     const min = Number(values.minTeamSize)
     const max = Number(values.maxTeamSize)
-    if (isNaN(min) || min < 1) errors.minTeamSize = 'Min size must be at least 1'
-    if (isNaN(max) || max < min) errors.maxTeamSize = 'Max size must be ≥ Min size'
+    if (isNaN(min) || min < 1) errors.minTeamSize = 'Min team size must be at least 1'
+    if (isNaN(max) || max < min) errors.maxTeamSize = 'Max team size must be ≥ Min team size'
   }
 
   return errors
@@ -35,11 +41,11 @@ function validateEvent(values) {
 export default function EventForm() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { events, addEvent, updateEvent } = useEvents()
-  const [formError, setFormError] = useState(null)
+  const { events, createEvent, updateEvent } = useEvents()
+  const [serverError, setServerError] = useState(null)
 
   const isEdit = Boolean(id)
-  const existingEvent = isEdit ? events.find((e) => e.id === id) : null
+  const existingEvent = isEdit ? events.find((e) => (e._id || e.id) === id || e.id === id) : null
 
   const { values, errors, submitting, handleChange, handleSubmit, reset } = useForm(
     {
@@ -49,13 +55,13 @@ export default function EventForm() {
       category: 'Technical',
       description: '',
       date: '',
-      time: '',
+      time: '10:00 AM',
       registrationDeadline: '',
       venue: '',
-      mode: 'On-campus',
+      mode: 'on-campus',
       totalSeats: '',
       isTeamEvent: false,
-      minTeamSize: '1',
+      minTeamSize: '2',
       maxTeamSize: '4',
       eligibility: 'Open to all students',
       prizes: '',
@@ -75,38 +81,62 @@ export default function EventForm() {
         category: existingEvent.category || 'Technical',
         description: existingEvent.description || '',
         date: existingEvent.date || '',
-        time: existingEvent.time || '',
+        time: existingEvent.time || '10:00 AM',
         registrationDeadline: existingEvent.registrationDeadline || '',
         venue: existingEvent.venue || '',
-        mode: existingEvent.mode || 'On-campus',
+        mode: existingEvent.mode || 'on-campus',
         totalSeats: existingEvent.totalSeats ? String(existingEvent.totalSeats) : '',
         isTeamEvent: Boolean(existingEvent.isTeamEvent),
-        minTeamSize: String(existingEvent.minTeamSize || 1),
+        minTeamSize: String(existingEvent.minTeamSize || 2),
         maxTeamSize: String(existingEvent.maxTeamSize || 4),
         eligibility: existingEvent.eligibility || 'Open to all students',
         prizes: existingEvent.prizes || '',
-        rules: existingEvent.rules || '',
+        rules: Array.isArray(existingEvent.rules)
+          ? existingEvent.rules.join('\n')
+          : existingEvent.rules || '',
         contactName: existingEvent.contactName || '',
         contactEmail: existingEvent.contactEmail || '',
       }
       reset()
       Object.keys(initialForm).forEach((key) => {
-        handleChange({ target: { name: key, value: initialForm[key], type: typeof initialForm[key] === 'boolean' ? 'checkbox' : 'text', checked: Boolean(initialForm[key]) } })
+        handleChange({
+          target: {
+            name: key,
+            value: initialForm[key],
+            type: typeof initialForm[key] === 'boolean' ? 'checkbox' : 'text',
+            checked: Boolean(initialForm[key]),
+          },
+        })
       })
     }
-  }, [id])
+  }, [id, existingEvent])
 
   const onValid = async (formValues) => {
-    setFormError(null)
+    setServerError(null)
+
+    const payload = {
+      ...formValues,
+      totalSeats: parseInt(formValues.totalSeats, 10),
+      isTeamEvent: Boolean(formValues.isTeamEvent),
+      minTeamSize: formValues.isTeamEvent ? parseInt(formValues.minTeamSize, 10) : 1,
+      maxTeamSize: formValues.isTeamEvent ? parseInt(formValues.maxTeamSize, 10) : 1,
+      rules: formValues.rules ? formValues.rules.split('\n').filter(Boolean) : [],
+    }
+
     try {
       if (isEdit) {
-        updateEvent(id, formValues)
+        await updateEvent(id, payload)
       } else {
-        addEvent(formValues)
+        await createEvent(payload)
       }
       navigate('/admin')
-    } catch {
-      setFormError('Failed to save event. Please verify input fields.')
+    } catch (err) {
+      console.error('Failed to save event:', err)
+      const msg =
+        err?.response?.data?.message ||
+        err?.message ||
+        'Failed to save event. Please check required fields.'
+      setServerError(msg)
     }
   }
 
@@ -122,18 +152,20 @@ export default function EventForm() {
       <div className="mt-6 rounded-3xl border border-ink/10 bg-white p-8 shadow-sm space-y-8">
         <div>
           <span className="font-mono text-xs font-semibold uppercase tracking-widest text-rust">
-            Unstop-Style Event Builder
+            Event Management
           </span>
           <h1 className="mt-1 font-display text-3xl font-semibold text-ink">
-            {isEdit ? `Edit Event — ${existingEvent?.id || id}` : 'Create Campus Event Listing'}
+            {isEdit ? `Edit Event: ${existingEvent?.title || id}` : 'Create New Campus Event'}
           </h1>
           <p className="mt-1 text-sm text-slate">
-            Provide comprehensive event details, eligibility criteria, schedules, and prize info.
+            Provide event details, schedule, venue, capacity, and participation rules.
           </p>
         </div>
 
-        {formError && (
-          <p className="rounded-lg bg-rust/10 px-3 py-2 text-sm text-rust">{formError}</p>
+        {serverError && (
+          <div className="rounded-xl border border-rust/30 bg-rust/10 p-4 text-xs font-semibold text-rust">
+            {serverError}
+          </div>
         )}
 
         <form onSubmit={handleSubmit(onValid)} className="space-y-10" noValidate>
@@ -144,15 +176,19 @@ export default function EventForm() {
             </h3>
 
             <div>
-              <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
+              <label
+                htmlFor="evt-title"
+                className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+              >
                 Event Title *
               </label>
               <input
+                id="evt-title"
                 type="text"
                 name="title"
                 value={values.title}
                 onChange={handleChange}
-                placeholder="e.g. Inter-College Hackathon 2026"
+                placeholder="e.g. Annual Hackathon 2026"
                 className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust ${
                   errors.title ? 'border-rust' : 'border-ink/15'
                 }`}
@@ -162,27 +198,32 @@ export default function EventForm() {
 
             <div className="grid gap-5 sm:grid-cols-2">
               <div>
-                <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
-                  Short Tagline *
+                <label
+                  htmlFor="evt-tagline"
+                  className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+                >
+                  Tagline / Subheading
                 </label>
                 <input
+                  id="evt-tagline"
                   type="text"
                   name="tagline"
                   value={values.tagline}
                   onChange={handleChange}
-                  placeholder="One-liner summary for card preview"
-                  className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust ${
-                    errors.tagline ? 'border-rust' : 'border-ink/15'
-                  }`}
+                  placeholder="One-line summary for event card"
+                  className="w-full rounded-xl border border-ink/15 bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust"
                 />
-                {errors.tagline && <p className="mt-1 text-xs text-rust">{errors.tagline}</p>}
               </div>
 
               <div>
-                <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
+                <label
+                  htmlFor="evt-category"
+                  className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+                >
                   Category *
                 </label>
                 <select
+                  id="evt-category"
                   name="category"
                   value={values.category}
                   onChange={handleChange}
@@ -198,29 +239,37 @@ export default function EventForm() {
             </div>
 
             <div>
-              <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
+              <label
+                htmlFor="evt-banner"
+                className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+              >
                 Banner Image URL (Optional)
               </label>
               <input
+                id="evt-banner"
                 type="url"
                 name="bannerUrl"
                 value={values.bannerUrl}
                 onChange={handleChange}
-                placeholder="https://images.unsplash.com/photo-..."
+                placeholder="https://images.unsplash.com/..."
                 className="w-full rounded-xl border border-ink/15 bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust"
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
+              <label
+                htmlFor="evt-desc"
+                className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+              >
                 Full Description *
               </label>
               <textarea
+                id="evt-desc"
                 name="description"
                 rows={4}
                 value={values.description}
                 onChange={handleChange}
-                placeholder="Provide a thorough overview of the event..."
+                placeholder="Comprehensive description of the event..."
                 className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust ${
                   errors.description ? 'border-rust' : 'border-ink/15'
                 }`}
@@ -232,20 +281,24 @@ export default function EventForm() {
           {/* Section 2: Schedule & Venue */}
           <div className="space-y-5 rounded-2xl border border-ink/10 bg-paper-dim/30 p-6">
             <h3 className="font-mono text-xs font-semibold uppercase tracking-widest text-rust border-b border-ink/10 pb-2">
-              2. Schedule & Venue Details
+              2. Schedule & Venue
             </h3>
 
             <div className="grid gap-5 sm:grid-cols-3">
               <div>
-                <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
+                <label
+                  htmlFor="evt-date"
+                  className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+                >
                   Event Date *
                 </label>
                 <input
+                  id="evt-date"
                   type="text"
                   name="date"
                   value={values.date}
                   onChange={handleChange}
-                  placeholder="Oct 25, 2026"
+                  placeholder="e.g. Nov 15, 2026"
                   className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust ${
                     errors.date ? 'border-rust' : 'border-ink/15'
                   }`}
@@ -254,48 +307,62 @@ export default function EventForm() {
               </div>
 
               <div>
-                <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
-                  Time *
+                <label
+                  htmlFor="evt-time"
+                  className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+                >
+                  Time
                 </label>
                 <input
+                  id="evt-time"
                   type="text"
                   name="time"
                   value={values.time}
                   onChange={handleChange}
                   placeholder="10:00 AM"
-                  className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust ${
-                    errors.time ? 'border-rust' : 'border-ink/15'
-                  }`}
+                  className="w-full rounded-xl border border-ink/15 bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust"
                 />
-                {errors.time && <p className="mt-1 text-xs text-rust">{errors.time}</p>}
               </div>
 
               <div>
-                <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
+                <label
+                  htmlFor="evt-deadline"
+                  className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+                >
                   Registration Deadline
                 </label>
                 <input
+                  id="evt-deadline"
                   type="text"
                   name="registrationDeadline"
                   value={values.registrationDeadline}
                   onChange={handleChange}
-                  placeholder="Oct 23, 2026"
-                  className="w-full rounded-xl border border-ink/15 bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust"
+                  placeholder="e.g. Nov 14, 2026"
+                  className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust ${
+                    errors.registrationDeadline ? 'border-rust' : 'border-ink/15'
+                  }`}
                 />
+                {errors.registrationDeadline && (
+                  <p className="mt-1 text-xs text-rust">{errors.registrationDeadline}</p>
+                )}
               </div>
             </div>
 
             <div className="grid gap-5 sm:grid-cols-2">
               <div>
-                <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
+                <label
+                  htmlFor="evt-venue"
+                  className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+                >
                   Venue *
                 </label>
                 <input
+                  id="evt-venue"
                   type="text"
                   name="venue"
                   value={values.venue}
                   onChange={handleChange}
-                  placeholder="e.g. CS Seminar Hall"
+                  placeholder="Auditorium / Lab 3 / Online"
                   className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust ${
                     errors.venue ? 'border-rust' : 'border-ink/15'
                   }`}
@@ -304,14 +371,18 @@ export default function EventForm() {
               </div>
 
               <div>
-                <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
+                <label
+                  htmlFor="evt-mode"
+                  className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+                >
                   Mode
                 </label>
                 <select
+                  id="evt-mode"
                   name="mode"
                   value={values.mode}
                   onChange={handleChange}
-                  className="w-full rounded-xl border border-ink/15 bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust"
+                  className="w-full rounded-xl border border-ink/15 bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust capitalize"
                 >
                   {modes.map((m) => (
                     <option key={m} value={m}>
@@ -323,23 +394,27 @@ export default function EventForm() {
             </div>
           </div>
 
-          {/* Section 3: Participation & Eligibility */}
+          {/* Section 3: Participation & Capacity */}
           <div className="space-y-5 rounded-2xl border border-ink/10 bg-paper-dim/30 p-6">
             <h3 className="font-mono text-xs font-semibold uppercase tracking-widest text-rust border-b border-ink/10 pb-2">
-              3. Participation & Team Structure
+              3. Participation & Seats Capacity
             </h3>
 
             <div className="grid gap-5 sm:grid-cols-2 items-center">
               <div>
-                <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
-                  Total Seats Capacity *
+                <label
+                  htmlFor="evt-seats"
+                  className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+                >
+                  Total Seats Available *
                 </label>
                 <input
+                  id="evt-seats"
                   type="number"
                   name="totalSeats"
                   value={values.totalSeats}
                   onChange={handleChange}
-                  placeholder="150"
+                  placeholder="100"
                   min="1"
                   className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust ${
                     errors.totalSeats ? 'border-rust' : 'border-ink/15'
@@ -348,8 +423,8 @@ export default function EventForm() {
                 {errors.totalSeats && <p className="mt-1 text-xs text-rust">{errors.totalSeats}</p>}
               </div>
 
-              <div>
-                <label className="flex items-center gap-3 cursor-pointer mt-4">
+              <div className="pt-4">
+                <label className="flex items-center gap-3 cursor-pointer">
                   <input
                     type="checkbox"
                     name="isTeamEvent"
@@ -357,10 +432,10 @@ export default function EventForm() {
                     onChange={(e) =>
                       handleChange({ target: { name: 'isTeamEvent', value: e.target.checked } })
                     }
-                    className="h-5 w-5 accent-rust rounded"
+                    className="h-5 w-5 accent-rust rounded cursor-pointer"
                   />
                   <span className="font-mono text-xs font-semibold uppercase text-ink">
-                    This is a Team Event
+                    Team Participation Event
                   </span>
                 </label>
               </div>
@@ -369,10 +444,14 @@ export default function EventForm() {
             {values.isTeamEvent && (
               <div className="grid gap-5 sm:grid-cols-2 rounded-xl bg-white p-4 border border-ink/10">
                 <div>
-                  <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
+                  <label
+                    htmlFor="evt-minteam"
+                    className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+                  >
                     Min Team Size
                   </label>
                   <input
+                    id="evt-minteam"
                     type="number"
                     name="minTeamSize"
                     value={values.minTeamSize}
@@ -380,14 +459,20 @@ export default function EventForm() {
                     min="1"
                     className="w-full rounded-xl border border-ink/15 bg-white px-4 py-2 text-sm outline-none focus:border-rust"
                   />
-                  {errors.minTeamSize && <p className="mt-1 text-xs text-rust">{errors.minTeamSize}</p>}
+                  {errors.minTeamSize && (
+                    <p className="mt-1 text-xs text-rust">{errors.minTeamSize}</p>
+                  )}
                 </div>
 
                 <div>
-                  <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
+                  <label
+                    htmlFor="evt-maxteam"
+                    className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+                  >
                     Max Team Size
                   </label>
                   <input
+                    id="evt-maxteam"
                     type="number"
                     name="maxTeamSize"
                     value={values.maxTeamSize}
@@ -395,66 +480,84 @@ export default function EventForm() {
                     min="1"
                     className="w-full rounded-xl border border-ink/15 bg-white px-4 py-2 text-sm outline-none focus:border-rust"
                   />
-                  {errors.maxTeamSize && <p className="mt-1 text-xs text-rust">{errors.maxTeamSize}</p>}
+                  {errors.maxTeamSize && (
+                    <p className="mt-1 text-xs text-rust">{errors.maxTeamSize}</p>
+                  )}
                 </div>
               </div>
             )}
 
             <div>
-              <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
-                Eligibility Criteria
+              <label
+                htmlFor="evt-eligibility"
+                className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+              >
+                Eligibility
               </label>
               <input
+                id="evt-eligibility"
                 type="text"
                 name="eligibility"
                 value={values.eligibility}
                 onChange={handleChange}
-                placeholder="e.g. Open to all CS & IT 3rd/4th year students"
+                placeholder="e.g. Open to all registered students"
                 className="w-full rounded-xl border border-ink/15 bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust"
               />
             </div>
           </div>
 
-          {/* Section 4: Extras & Contact */}
+          {/* Section 4: Prizes & Guidelines */}
           <div className="space-y-5 rounded-2xl border border-ink/10 bg-paper-dim/30 p-6">
             <h3 className="font-mono text-xs font-semibold uppercase tracking-widest text-rust border-b border-ink/10 pb-2">
               4. Prizes, Guidelines & Contact
             </h3>
 
             <div>
-              <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
-                Prizes & Rewards
+              <label
+                htmlFor="evt-prizes"
+                className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+              >
+                Prizes & Awards (Optional)
               </label>
               <input
+                id="evt-prizes"
                 type="text"
                 name="prizes"
                 value={values.prizes}
                 onChange={handleChange}
-                placeholder="e.g. ₹20,000 Cash Pool + Certificates"
+                placeholder="e.g. Winner ₹10,000 + Trophy"
                 className="w-full rounded-xl border border-ink/15 bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust"
               />
             </div>
 
             <div>
-              <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
+              <label
+                htmlFor="evt-rules"
+                className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+              >
                 Rules & Guidelines (One per line)
               </label>
               <textarea
+                id="evt-rules"
                 name="rules"
                 rows={3}
                 value={values.rules}
                 onChange={handleChange}
-                placeholder="1. Bring valid college ID badge.&#10;2. Late entries will not be allowed."
+                placeholder="1. Carry college ID.&#10;2. Be on time."
                 className="w-full rounded-xl border border-ink/15 bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust"
               />
             </div>
 
             <div className="grid gap-5 sm:grid-cols-2">
               <div>
-                <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
+                <label
+                  htmlFor="evt-contactname"
+                  className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+                >
                   Contact Coordinator Name
                 </label>
                 <input
+                  id="evt-contactname"
                   type="text"
                   name="contactName"
                   value={values.contactName}
@@ -465,15 +568,19 @@ export default function EventForm() {
               </div>
 
               <div>
-                <label className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate">
-                  Contact Email / Phone
+                <label
+                  htmlFor="evt-contactemail"
+                  className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+                >
+                  Contact Email
                 </label>
                 <input
-                  type="text"
+                  id="evt-contactemail"
+                  type="email"
                   name="contactEmail"
                   value={values.contactEmail}
                   onChange={handleChange}
-                  placeholder="coordinator@college.edu"
+                  placeholder="events@campuspass.edu"
                   className="w-full rounded-xl border border-ink/15 bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust"
                 />
               </div>
@@ -483,16 +590,16 @@ export default function EventForm() {
           <div className="flex items-center justify-end gap-4 pt-4 border-t border-ink/10">
             <Link
               to="/admin"
-              className="rounded-full border border-ink/20 px-6 py-2.5 text-xs font-semibold text-ink hover:bg-ink/5"
+              className="rounded-full border border-ink/20 px-6 py-2.5 text-xs font-semibold text-ink hover:bg-ink/5 cursor-pointer"
             >
               Cancel
             </Link>
             <button
               type="submit"
               disabled={submitting}
-              className="rounded-full bg-ink px-8 py-3 text-xs font-semibold text-paper transition-colors hover:bg-ink-light disabled:opacity-60"
+              className="rounded-full bg-ink px-8 py-3 text-xs font-semibold text-paper transition-colors hover:bg-ink-light disabled:opacity-60 cursor-pointer"
             >
-              {submitting ? 'Saving Event...' : isEdit ? 'Update Event Listing' : 'Publish Unstop Event'}
+              {submitting ? 'Saving Event...' : isEdit ? 'Update Event Listing' : 'Publish Campus Event'}
             </button>
           </div>
         </form>

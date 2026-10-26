@@ -1,37 +1,43 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useEvents } from '../context/EventContext'
+import { useAuth } from '../context/AuthContext'
 import RegistrationModal from '../components/RegistrationModal'
 
 export default function EventDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { user, isAuthenticated } = useAuth()
   const { events, isEventRegistered, highlightedEventId, lastDeletedEventId } = useEvents()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState(null)
 
-  const event = events.find((e) => e.id === id || e._id === id)
-  const isRegistered = event ? isEventRegistered(event.id || event._id) : false
+  const event = events.find((e) => (e._id || e.id) === id || e.id === id)
+  const eventId = event?._id || event?.id
+
+  const isRegistered = eventId ? isEventRegistered(eventId) : false
 
   const isHighlighted =
-    highlightedEventId && (highlightedEventId === id || highlightedEventId === event?._id)
+    highlightedEventId && (highlightedEventId === id || highlightedEventId === eventId)
 
   // Redirect if currently viewed event is deleted in real-time
   useEffect(() => {
-    if (lastDeletedEventId && (lastDeletedEventId === id || lastDeletedEventId === event?._id)) {
-      setToastMessage('This event was deleted by an administrator. Redirecting to dashboard...')
+    if (lastDeletedEventId && (lastDeletedEventId === id || lastDeletedEventId === eventId)) {
+      setToastMessage('This event was removed by an administrator. Redirecting to dashboard...')
       const timer = setTimeout(() => {
         navigate('/dashboard')
       }, 2500)
       return () => clearTimeout(timer)
     }
-  }, [lastDeletedEventId, id, event?._id, navigate])
+  }, [lastDeletedEventId, id, eventId, navigate])
 
   if (!event) {
     return (
       <div className="mx-auto max-w-4xl px-6 py-16 text-center">
         <h2 className="font-display text-3xl font-semibold text-ink">Event not found</h2>
-        <p className="mt-2 text-sm text-slate">The event you are looking for does not exist or has been removed.</p>
+        <p className="mt-2 text-sm text-slate">
+          The event you are looking for does not exist or has been removed.
+        </p>
         <Link
           to="/dashboard"
           className="mt-6 inline-block rounded-full bg-ink px-6 py-2.5 font-mono text-xs uppercase tracking-wider text-paper transition-colors hover:bg-ink-light"
@@ -42,12 +48,43 @@ export default function EventDetail() {
     )
   }
 
-  const pctLeft = Math.round((event.seatsLeft / event.seatsTotal) * 100)
+  const totalSeats = event.totalSeats || event.seatsTotal || 0
+  const seatsLeft = event.seatsLeft !== undefined ? event.seatsLeft : totalSeats
+  const pctLeft = totalSeats > 0 ? Math.round((seatsLeft / totalSeats) * 100) : 0
   const low = pctLeft <= 15
+  const isFull = seatsLeft <= 0
+  const isClosed = event.status === 'closed'
+  const isDeadlinePassed =
+    event.registrationDeadline && new Date() > new Date(event.registrationDeadline)
 
-  const rulesList = event.rules
-    ? event.rules.split('\n').filter((r) => r.trim().length > 0)
-    : ['Follow standard campus guidelines.', 'Carry valid student ID card.']
+  // Parse rules list safely
+  const rulesList = Array.isArray(event.rules)
+    ? event.rules
+    : typeof event.rules === 'string' && event.rules
+      ? event.rules.split('\n').filter((r) => r.trim().length > 0)
+      : ['Follow general campus guidelines and bring your student ID.']
+
+  // Determine button state according to specification
+  let buttonLabel = 'Register for this Event'
+  let buttonDisabled = false
+  let buttonAction = () => setIsModalOpen(true)
+
+  if (!isAuthenticated) {
+    buttonLabel = 'Log in to register'
+    buttonAction = () => navigate('/login')
+  } else if (user?.role === 'admin') {
+    buttonLabel = 'View Registrants (Admin)'
+    buttonAction = () => navigate(`/admin/events/${eventId}/registrants`)
+  } else if (isRegistered) {
+    buttonLabel = '✓ Registered'
+    buttonDisabled = true
+  } else if (isFull) {
+    buttonLabel = 'Seats full'
+    buttonDisabled = true
+  } else if (isClosed || isDeadlinePassed) {
+    buttonLabel = 'Registration closed'
+    buttonDisabled = true
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
@@ -60,8 +97,8 @@ export default function EventDetail() {
 
       {toastMessage && (
         <div className="mt-4 flex items-center justify-between rounded-xl bg-amber/20 px-5 py-3 border border-amber/40 text-ink">
-          <p className="text-sm font-semibold">✓ {toastMessage}</p>
-          <button onClick={() => setToastMessage(null)} className="text-xs font-bold text-ink">
+          <p className="text-sm font-semibold">ℹ️ {toastMessage}</p>
+          <button onClick={() => setToastMessage(null)} className="text-xs font-bold text-ink cursor-pointer">
             ✕
           </button>
         </div>
@@ -78,7 +115,7 @@ export default function EventDetail() {
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-gradient-to-r from-ink via-rust/70 to-amber/80 p-8 text-paper">
-              <span className="font-display text-4xl font-semibold">{event.title}</span>
+              <span className="font-display text-4xl font-semibold text-center">{event.title}</span>
             </div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/40 to-transparent" />
@@ -88,23 +125,27 @@ export default function EventDetail() {
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-full bg-amber px-3 py-1 font-mono text-xs font-semibold uppercase text-ink">
-                  {event.category}
+                  {event.category || 'Event'}
                 </span>
-                <span className="rounded-full bg-paper/20 px-3 py-1 font-mono text-xs font-semibold uppercase text-paper backdrop-blur-sm">
-                  {event.mode || 'On-campus'}
+                <span className="rounded-full bg-paper/20 px-3 py-1 font-mono text-xs font-semibold uppercase text-paper backdrop-blur-sm capitalize">
+                  {event.mode || 'on-campus'}
                 </span>
                 <span className="rounded-full bg-rust px-3 py-1 font-mono text-xs font-semibold uppercase text-paper">
-                  {event.isTeamEvent ? `Team (${event.minTeamSize}-${event.maxTeamSize})` : 'Individual'}
+                  {event.isTeamEvent
+                    ? `Team (${event.minTeamSize || 2}–${event.maxTeamSize || 4})`
+                    : 'Individual'}
                 </span>
               </div>
               <h1 className="mt-3 font-display text-3xl sm:text-4xl font-semibold text-paper leading-tight">
                 {event.title}
               </h1>
-              <p className="mt-1 font-mono text-xs sm:text-sm text-paper/80">{event.tagline}</p>
+              {event.tagline && (
+                <p className="mt-1 font-mono text-xs sm:text-sm text-paper/80">{event.tagline}</p>
+              )}
             </div>
 
             <span className="font-mono text-xs uppercase tracking-wider text-amber font-semibold">
-              {event.id}
+              {event.status === 'open' ? '🟢 Open' : '🔴 Closed'}
             </span>
           </div>
         </div>
@@ -116,7 +157,7 @@ export default function EventDetail() {
             <div>
               <p className="font-mono text-[11px] uppercase tracking-wider text-slate">Date & Time</p>
               <p className="mt-1 font-display text-base font-semibold text-ink">{event.date}</p>
-              <p className="text-xs text-slate">{event.time}</p>
+              <p className="text-xs text-slate">{event.time || '10:00 AM'}</p>
             </div>
             <div>
               <p className="font-mono text-[11px] uppercase tracking-wider text-slate">Venue</p>
@@ -131,7 +172,7 @@ export default function EventDetail() {
             <div>
               <p className="font-mono text-[11px] uppercase tracking-wider text-slate">Eligibility</p>
               <p className="mt-1 font-display text-base font-semibold text-ink">
-                {event.eligibility || 'Open to all'}
+                {event.eligibility || 'Open to all students'}
               </p>
             </div>
           </div>
@@ -187,7 +228,9 @@ export default function EventDetail() {
               <p className="mt-1 font-display text-base font-semibold text-ink">
                 {event.contactName || 'Campus Event Coordinator'}
               </p>
-              <p className="font-mono text-xs text-rust">{event.contactEmail || 'events@college.edu'}</p>
+              <p className="font-mono text-xs text-rust">
+                {event.contactEmail || 'events@campuspass.edu'}
+              </p>
             </div>
           )}
 
@@ -198,40 +241,35 @@ export default function EventDetail() {
             }`}
           >
             <div className="flex items-center justify-between font-mono text-xs text-slate">
-              <span>Seat Reservation Status</span>
+              <span>Seat Availability Status</span>
               <span className={isHighlighted ? 'text-rust font-bold animate-pulse' : ''}>
-                {event.seatsLeft} / {event.seatsTotal} Total Seats Available
+                {seatsLeft} / {totalSeats} Seats Left
               </span>
             </div>
             <div className="h-2.5 w-full overflow-hidden rounded-full bg-paper-dim">
               <div
-                className={`h-full rounded-full transition-all duration-300 ${low ? 'bg-rust' : 'bg-amber'}`}
-                style={{ width: `${pctLeft}%` }}
+                className={`h-full rounded-full transition-all duration-500 ${
+                  low ? 'bg-rust' : 'bg-amber'
+                }`}
+                style={{ width: `${Math.min(100, Math.max(0, pctLeft))}%` }}
               />
             </div>
 
             <button
-              onClick={() => setIsModalOpen(true)}
-              disabled={isRegistered || event.seatsLeft === 0}
-              className={`w-full rounded-full py-4 text-base font-semibold transition-colors ${
-                isRegistered
-                  ? 'bg-paper-dim text-ink opacity-80 cursor-default'
-                  : event.seatsLeft === 0
-                    ? 'bg-ink/40 text-paper cursor-not-allowed'
-                    : 'bg-ink text-paper hover:bg-ink-light'
+              onClick={buttonAction}
+              disabled={buttonDisabled}
+              className={`w-full rounded-full py-4 text-base font-semibold transition-colors cursor-pointer ${
+                buttonDisabled
+                  ? 'bg-paper-dim text-ink opacity-80 cursor-not-allowed'
+                  : 'bg-ink text-paper hover:bg-ink-light'
               }`}
             >
-              {event.seatsLeft === 0
-                ? 'Seats Full'
-                : isRegistered
-                  ? '✓ Already Registered'
-                  : 'Register for this Event'}
+              {buttonLabel}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Unstop Registration Modal */}
       <RegistrationModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
