@@ -50,6 +50,15 @@ export const subcategoryMap = {
     'Entrepreneurship & Startups',
     'Other Seminar',
   ],
+  'Genesis 2.0 INFT': [
+    'Hackathon',
+    'Coding Competition',
+    'Project Presentation',
+    'Technical Paper',
+    'Robotics & Hardware',
+    'UI/UX & Web Dev',
+    'Other Genesis Event',
+  ],
   Other: [
     'General Campus Fest',
     'Community Service / Drive',
@@ -58,7 +67,15 @@ export const subcategoryMap = {
   ],
 }
 
-const categories = ['Technical', 'Cultural', 'Sports', 'Workshop', 'Seminar', 'Other']
+const categories = [
+  'Technical',
+  'Genesis 2.0 INFT',
+  'Cultural',
+  'Sports',
+  'Workshop',
+  'Seminar',
+  'Other',
+]
 const modes = ['on-campus', 'online', 'hybrid']
 
 function validateEvent(values) {

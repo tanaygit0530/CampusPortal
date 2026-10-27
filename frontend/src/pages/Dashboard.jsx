@@ -6,7 +6,15 @@ import ConfirmModal from '../components/ConfirmModal'
 import { useAuth } from '../context/AuthContext'
 import { useEvents } from '../context/EventContext'
 
-const categories = ['All', 'Technical', 'Cultural', 'Sports', 'Workshop', 'Seminar']
+const categories = [
+  'All',
+  'Technical',
+  'Genesis 2.0 INFT',
+  'Cultural',
+  'Sports',
+  'Workshop',
+  'Seminar',
+]
 const modes = ['All', 'on-campus', 'online', 'hybrid']
 const statusFilters = ['All', 'open', 'closed']
 
