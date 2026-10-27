@@ -101,9 +101,16 @@ export default function EventCard({ event }) {
               <h3 className="font-display text-xl font-semibold text-ink group-hover:text-rust transition-colors">
                 {event.title}
               </h3>
-              <span className="shrink-0 font-mono text-[10px] text-slate">
-                {event.mode === 'online' ? '🌐 Online' : event.mode === 'hybrid' ? '⚡ Hybrid' : '🏛️ On-Campus'}
-              </span>
+              <div className="flex flex-col items-end gap-1 shrink-0">
+                <span className="font-mono text-[10px] text-slate">
+                  {event.mode === 'online' ? '🌐 Online' : event.mode === 'hybrid' ? '⚡ Hybrid' : '🏛️ On-Campus'}
+                </span>
+                {event.subcategory && (
+                  <span className="rounded-full bg-ink/5 px-2 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-rust border border-rust/15">
+                    {event.subcategory}
+                  </span>
+                )}
+              </div>
             </div>
             {event.tagline && (
               <p className="mt-1 text-xs text-slate line-clamp-1">{event.tagline}</p>

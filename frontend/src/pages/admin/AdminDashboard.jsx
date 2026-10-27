@@ -278,7 +278,14 @@ export default function AdminDashboard() {
                           {e.mode || 'on-campus'} · {e.isTeamEvent ? 'Team' : 'Individual'}
                         </span>
                       </td>
-                      <td className="py-4 px-4 font-mono text-xs text-slate">{e.category}</td>
+                      <td className="py-4 px-4 font-mono text-xs text-slate">
+                        <span className="font-medium text-ink">{e.category}</span>
+                        {e.subcategory && (
+                          <span className="block text-[10px] text-rust font-medium">
+                            {e.subcategory}
+                          </span>
+                        )}
+                      </td>
                       <td className="py-4 px-4 font-mono text-xs text-slate">
                         {e.date}
                         <span className="block text-[11px] text-slate/80">{e.venue}</span>
@@ -355,7 +362,7 @@ export default function AdminDashboard() {
                       <div>
                         <h3 className="font-display text-base font-semibold text-ink">{e.title}</h3>
                         <p className="font-mono text-[11px] text-slate">
-                          {e.category} · {e.mode || 'on-campus'}
+                          {e.category} {e.subcategory ? `· ${e.subcategory}` : ''} · {e.mode || 'on-campus'}
                         </p>
                       </div>
                       <span

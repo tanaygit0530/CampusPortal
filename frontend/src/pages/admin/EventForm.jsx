@@ -3,6 +3,61 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import useForm from '../../hooks/useForm'
 import { useEvents } from '../../context/EventContext'
 
+export const subcategoryMap = {
+  Technical: [
+    'Hackathon',
+    'Coding Competition',
+    'Web / App Development',
+    'AI & Machine Learning',
+    'Robotics & IoT',
+    'Cybersecurity & CTF',
+    'Paper / Project Presentation',
+    'Other Technical',
+  ],
+  Sports: [
+    'Cricket Tournament',
+    'Football Championship',
+    'Basketball',
+    'Badminton Championship',
+    'Table Tennis',
+    'Chess Tournament',
+    'Athletics & Track',
+    'Volleyball',
+    'Esports & Gaming',
+    'Other Sports',
+  ],
+  Cultural: [
+    'Battle of the Bands / Music',
+    'Dance (Solo / Group)',
+    'Drama & Theatre',
+    'Fashion Show',
+    'Fine Arts & Painting',
+    'Photography & Film',
+    'Standup Comedy',
+    'Other Cultural',
+  ],
+  Workshop: [
+    'Hands-on Tech Bootcamp',
+    'UI/UX & Product Design',
+    'Cloud & DevOps Workshop',
+    'Career & Placement Prep',
+    'Other Workshop',
+  ],
+  Seminar: [
+    'Industry Expert Keynote',
+    'Alumni Talk & Mentorship',
+    'Research & Higher Studies',
+    'Entrepreneurship & Startups',
+    'Other Seminar',
+  ],
+  Other: [
+    'General Campus Fest',
+    'Community Service / Drive',
+    'Networking Mixer',
+    'Other',
+  ],
+}
+
 const categories = ['Technical', 'Cultural', 'Sports', 'Workshop', 'Seminar', 'Other']
 const modes = ['on-campus', 'online', 'hybrid']
 
@@ -43,16 +98,18 @@ export default function EventForm() {
   const navigate = useNavigate()
   const { events, createEvent, updateEvent } = useEvents()
   const [serverError, setServerError] = useState(null)
+  const [isCustomSubcategory, setIsCustomSubcategory] = useState(false)
 
   const isEdit = Boolean(id)
   const existingEvent = isEdit ? events.find((e) => (e._id || e.id) === id || e.id === id) : null
 
-  const { values, errors, submitting, handleChange, handleSubmit, reset } = useForm(
+  const { values, errors, submitting, handleChange, handleSubmit, reset, setValues } = useForm(
     {
       title: '',
       tagline: '',
       bannerUrl: '',
       category: 'Technical',
+      subcategory: 'Hackathon',
       description: '',
       date: '',
       time: '10:00 AM',
@@ -72,13 +129,45 @@ export default function EventForm() {
     validateEvent
   )
 
+  const currentSubcategories = subcategoryMap[values.category] || []
+
+  const handleCategoryChange = (e) => {
+    const newCategory = e.target.value
+    const options = subcategoryMap[newCategory] || []
+    const defaultSub = options[0] || ''
+    setIsCustomSubcategory(false)
+    setValues((prev) => ({
+      ...prev,
+      category: newCategory,
+      subcategory: defaultSub,
+    }))
+  }
+
+  const handleSubcategorySelect = (e) => {
+    const val = e.target.value
+    if (val === '__custom__') {
+      setIsCustomSubcategory(true)
+      setValues((prev) => ({ ...prev, subcategory: '' }))
+    } else {
+      setIsCustomSubcategory(false)
+      setValues((prev) => ({ ...prev, subcategory: val }))
+    }
+  }
+
   useEffect(() => {
     if (isEdit && existingEvent) {
+      const cat = existingEvent.category || 'Technical'
+      const sub = existingEvent.subcategory || ''
+      const options = subcategoryMap[cat] || []
+      const isCustom = sub && !options.includes(sub)
+      setIsCustomSubcategory(Boolean(isCustom))
+
       const initialForm = {
         title: existingEvent.title || '',
         tagline: existingEvent.tagline || '',
         bannerUrl: existingEvent.bannerUrl || '',
-        category: existingEvent.category || 'Technical',
+        category: cat,
+        subcategory: sub || options[0] || '',
         description: existingEvent.description || '',
         date: existingEvent.date || '',
         time: existingEvent.time || '10:00 AM',
@@ -196,25 +285,25 @@ export default function EventForm() {
               {errors.title && <p className="mt-1 text-xs text-rust">{errors.title}</p>}
             </div>
 
-            <div className="grid gap-5 sm:grid-cols-2">
-              <div>
-                <label
-                  htmlFor="evt-tagline"
-                  className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
-                >
-                  Tagline / Subheading
-                </label>
-                <input
-                  id="evt-tagline"
-                  type="text"
-                  name="tagline"
-                  value={values.tagline}
-                  onChange={handleChange}
-                  placeholder="One-line summary for event card"
-                  className="w-full rounded-xl border border-ink/15 bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust"
-                />
-              </div>
+            <div>
+              <label
+                htmlFor="evt-tagline"
+                className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
+              >
+                Tagline / Subheading
+              </label>
+              <input
+                id="evt-tagline"
+                type="text"
+                name="tagline"
+                value={values.tagline}
+                onChange={handleChange}
+                placeholder="One-line summary for event card"
+                className="w-full rounded-xl border border-ink/15 bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust"
+              />
+            </div>
 
+            <div className="grid gap-5 sm:grid-cols-2">
               <div>
                 <label
                   htmlFor="evt-category"
@@ -226,7 +315,7 @@ export default function EventForm() {
                   id="evt-category"
                   name="category"
                   value={values.category}
-                  onChange={handleChange}
+                  onChange={handleCategoryChange}
                   className="w-full rounded-xl border border-ink/15 bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust"
                 >
                   {categories.map((c) => (
@@ -236,7 +325,61 @@ export default function EventForm() {
                   ))}
                 </select>
               </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label
+                    htmlFor="evt-subcategory"
+                    className="block font-mono text-[11px] uppercase tracking-wider text-slate"
+                  >
+                    Subcategory
+                  </label>
+                  <span className="font-mono text-[10px] text-rust font-medium">
+                    {values.category} Focus
+                  </span>
+                </div>
+                <select
+                  id="evt-subcategory"
+                  name="subcategory"
+                  value={
+                    isCustomSubcategory
+                      ? '__custom__'
+                      : currentSubcategories.includes(values.subcategory)
+                      ? values.subcategory
+                      : currentSubcategories[0] || ''
+                  }
+                  onChange={handleSubcategorySelect}
+                  className="w-full rounded-xl border border-ink/15 bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust"
+                >
+                  {currentSubcategories.map((sc) => (
+                    <option key={sc} value={sc}>
+                      {sc}
+                    </option>
+                  ))}
+                  <option value="__custom__">✏️ + Custom Subcategory...</option>
+                </select>
+              </div>
             </div>
+
+            {isCustomSubcategory && (
+              <div>
+                <label
+                  htmlFor="evt-custom-sub"
+                  className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-rust font-semibold"
+                >
+                  Custom Subcategory Name
+                </label>
+                <input
+                  id="evt-custom-sub"
+                  type="text"
+                  name="subcategory"
+                  value={values.subcategory}
+                  onChange={handleChange}
+                  placeholder="e.g. Genesis 2.0 Hackathon, Box Cricket 3v3..."
+                  className="w-full rounded-xl border border-rust/40 bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust shadow-sm"
+                />
+              </div>
+            )}
 
             <div>
               <label

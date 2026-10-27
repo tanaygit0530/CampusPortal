@@ -127,6 +127,11 @@ export default function EventDetail() {
                 <span className="rounded-full bg-amber px-2.5 sm:px-3 py-0.5 sm:py-1 font-mono text-[10px] sm:text-xs font-semibold uppercase text-ink">
                   {event.category || 'Event'}
                 </span>
+                {event.subcategory && (
+                  <span className="rounded-full bg-paper/20 px-2.5 sm:px-3 py-0.5 sm:py-1 font-mono text-[10px] sm:text-xs font-semibold uppercase text-paper backdrop-blur-sm">
+                    {event.subcategory}
+                  </span>
+                )}
                 <span className="rounded-full bg-paper/20 px-2.5 sm:px-3 py-0.5 sm:py-1 font-mono text-[10px] sm:text-xs font-semibold uppercase text-paper backdrop-blur-sm capitalize">
                   {event.mode || 'on-campus'}
                 </span>

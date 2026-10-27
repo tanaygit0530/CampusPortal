@@ -32,7 +32,8 @@ export default function Dashboard() {
         if (
           searchQuery.trim() &&
           !e.title?.toLowerCase().includes(searchQuery.toLowerCase().trim()) &&
-          !e.tagline?.toLowerCase().includes(searchQuery.toLowerCase().trim())
+          !e.tagline?.toLowerCase().includes(searchQuery.toLowerCase().trim()) &&
+          !e.subcategory?.toLowerCase().includes(searchQuery.toLowerCase().trim())
         ) {
           return false
         }

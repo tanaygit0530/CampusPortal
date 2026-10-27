@@ -22,6 +22,11 @@ const eventSchema = new mongoose.Schema(
       required: [true, 'Category is required'],
       default: 'Technical',
     },
+    subcategory: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     bannerUrl: {
       type: String,
       trim: true,
