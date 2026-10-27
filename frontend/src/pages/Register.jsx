@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import useForm from '../hooks/useForm'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/axiosInstance'
@@ -28,7 +28,13 @@ function validateRegister(values) {
 export default function Register() {
   const [serverError, setServerError] = useState(null)
   const navigate = useNavigate()
+  const location = useLocation()
   const { login } = useAuth()
+
+  const searchParams = new URLSearchParams(location.search)
+  const [activeRole, setActiveRole] = useState(
+    searchParams.get('role') === 'admin' ? 'admin' : 'student'
+  )
 
   const { values, errors, submitting, handleChange, handleSubmit } = useForm(
     { name: '', email: '', password: '', confirmPassword: '' },
@@ -38,16 +44,21 @@ export default function Register() {
   const onValid = async (formValues) => {
     setServerError(null)
     try {
-      // Send real POST request to /api/auth/register (Public signup creates student only)
+      // Support student or admin creation
       const response = await api.post('/auth/register', {
         name: formValues.name.trim(),
         email: formValues.email.trim(),
         password: formValues.password,
+        role: activeRole,
       })
 
       const { token, user } = response.data
       login(user, token)
-      navigate('/dashboard')
+      if (user.role === 'admin') {
+        navigate('/admin')
+      } else {
+        navigate('/dashboard')
+      }
     } catch (err) {
       console.error('Registration error:', err)
       const message =
@@ -75,17 +86,31 @@ export default function Register() {
 
         <div className="relative">
           <p className="font-mono text-[13px] uppercase tracking-[0.2em] text-amber">
-            Student Access Pass
+            {activeRole === 'admin' ? 'Administrator Access' : 'Student Access Pass'}
           </p>
           <h2 className="mt-4 font-display text-4xl font-semibold leading-tight">
-            Join CampusPass
-            <br />
-            and reserve your
-            <br />
-            place at every event.
+            {activeRole === 'admin' ? (
+              <>
+                Empower campus
+                <br />
+                events with full
+                <br />
+                control & insights.
+              </>
+            ) : (
+              <>
+                Join CampusPass
+                <br />
+                and reserve your
+                <br />
+                place at every event.
+              </>
+            )}
           </h2>
           <p className="mt-6 max-w-sm text-sm leading-relaxed text-paper/70">
-            Sign up for instant digital stubs, live seat availability, and event registrations.
+            {activeRole === 'admin'
+              ? 'Register an administrator account to organize hackathons, track attendance, and publish certificates.'
+              : 'Sign up for instant digital stubs, live seat availability, and event registrations.'}
           </p>
         </div>
 
@@ -95,9 +120,45 @@ export default function Register() {
       {/* Right form panel */}
       <div className="flex items-center justify-center p-5 sm:p-8 md:p-12">
         <div className="w-full max-w-sm">
-          <h1 className="font-display text-2xl sm:text-3xl font-semibold text-ink">Create student account</h1>
+          {/* Role selector tabs */}
+          <div className="mb-6 flex rounded-xl bg-ink/5 p-1 border border-ink/10">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveRole('student')
+                setServerError(null)
+              }}
+              className={`flex-1 rounded-lg py-2 text-xs font-semibold transition-all ${
+                activeRole === 'student'
+                  ? 'bg-white text-ink shadow-sm'
+                  : 'text-slate hover:text-ink'
+              }`}
+            >
+              🎓 Student Signup
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveRole('admin')
+                setServerError(null)
+              }}
+              className={`flex-1 rounded-lg py-2 text-xs font-semibold transition-all ${
+                activeRole === 'admin'
+                  ? 'bg-ink text-paper shadow-sm'
+                  : 'text-slate hover:text-ink'
+              }`}
+            >
+              🛡️ Admin Signup
+            </button>
+          </div>
+
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold text-ink">
+            {activeRole === 'admin' ? 'Create admin account' : 'Create student account'}
+          </h1>
           <p className="mt-2 text-sm text-slate">
-            Enter your college details below to start reserving event passes.
+            {activeRole === 'admin'
+              ? 'Enter administrator credentials to manage campus events and rosters.'
+              : 'Enter your college details below to start reserving event passes.'}
           </p>
 
           {serverError && (
@@ -198,13 +259,20 @@ export default function Register() {
               disabled={submitting}
               className="w-full rounded-full bg-ink py-3 text-sm font-semibold text-paper transition-colors hover:bg-ink-light disabled:opacity-60 cursor-pointer"
             >
-              {submitting ? 'Creating account…' : 'Sign Up as Student'}
+              {submitting
+                ? 'Creating account…'
+                : activeRole === 'admin'
+                ? 'Sign Up as Admin'
+                : 'Sign Up as Student'}
             </button>
           </form>
 
           <p className="mt-6 text-center text-sm text-slate">
             Already have an account?{' '}
-            <Link to="/login" className="font-semibold text-rust hover:underline">
+            <Link
+              to={activeRole === 'admin' ? '/login?role=admin' : '/login'}
+              className="font-semibold text-rust hover:underline"
+            >
               Log in
             </Link>
           </p>

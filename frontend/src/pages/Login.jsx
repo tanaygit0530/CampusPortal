@@ -23,11 +23,14 @@ export default function Login() {
   const location = useLocation()
   const { login } = useAuth()
 
-  // Check if redirected due to session expiry
+  // Check if redirected due to session expiry or preselected role
   const searchParams = new URLSearchParams(location.search)
   const isExpired = searchParams.get('expired') === 'true'
+  const [activeRole, setActiveRole] = useState(
+    searchParams.get('role') === 'admin' ? 'admin' : 'student'
+  )
 
-  const { values, errors, submitting, handleChange, handleSubmit } = useForm(
+  const { values, errors, submitting, handleChange, handleSubmit, setValues } = useForm(
     { email: '', password: '' },
     validateLogin
   )
@@ -75,17 +78,31 @@ export default function Login() {
 
         <div className="relative">
           <p className="font-mono text-[13px] uppercase tracking-[0.2em] text-amber">
-            Campus Access Portal
+            {activeRole === 'admin' ? 'Administrative Access' : 'Campus Access Portal'}
           </p>
           <h2 className="mt-4 font-display text-4xl font-semibold leading-tight">
-            Your seat at
-            <br />
-            every event,
-            <br />
-            one login away.
+            {activeRole === 'admin' ? (
+              <>
+                Manage events,
+                <br />
+                attendees & passes
+                <br />
+                in real time.
+              </>
+            ) : (
+              <>
+                Your seat at
+                <br />
+                every event,
+                <br />
+                one login away.
+              </>
+            )}
           </h2>
           <p className="mt-6 max-w-sm text-sm leading-relaxed text-paper/70">
-            Real-time campus pass system backed by authoritative MongoDB records and live WebSockets.
+            {activeRole === 'admin'
+              ? 'Authoritative administrative controls, roster CSV exports, and event lifecycle management.'
+              : 'Real-time campus pass system backed by authoritative MongoDB records and live WebSockets.'}
           </p>
         </div>
 
@@ -95,9 +112,45 @@ export default function Login() {
       {/* Right form panel */}
       <div className="flex items-center justify-center p-5 sm:p-8 md:p-12">
         <div className="w-full max-w-sm">
-          <h1 className="font-display text-2xl sm:text-3xl font-semibold text-ink">Welcome back</h1>
+          {/* Role selector tabs */}
+          <div className="mb-6 flex rounded-xl bg-ink/5 p-1 border border-ink/10">
+            <button
+              type="button"
+              onClick={() => {
+                setActiveRole('student')
+                setServerError(null)
+              }}
+              className={`flex-1 rounded-lg py-2 text-xs font-semibold transition-all ${
+                activeRole === 'student'
+                  ? 'bg-white text-ink shadow-sm'
+                  : 'text-slate hover:text-ink'
+              }`}
+            >
+              🎓 Student Login
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveRole('admin')
+                setServerError(null)
+              }}
+              className={`flex-1 rounded-lg py-2 text-xs font-semibold transition-all ${
+                activeRole === 'admin'
+                  ? 'bg-ink text-paper shadow-sm'
+                  : 'text-slate hover:text-ink'
+              }`}
+            >
+              🛡️ Admin Login
+            </button>
+          </div>
+
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold text-ink">
+            {activeRole === 'admin' ? 'Admin Portal' : 'Welcome back'}
+          </h1>
           <p className="mt-2 text-sm text-slate">
-            Log in with your college credentials to access your dashboard.
+            {activeRole === 'admin'
+              ? 'Log in with administrator credentials to manage events and rosters.'
+              : 'Log in with your college credentials to access your dashboard.'}
           </p>
 
           {isExpired && !serverError && (
@@ -118,7 +171,7 @@ export default function Login() {
                 htmlFor="login-email"
                 className="mb-1.5 block font-mono text-[11px] uppercase tracking-wider text-slate"
               >
-                Email Address
+                {activeRole === 'admin' ? 'Admin Email' : 'Email Address'}
               </label>
               <input
                 id="login-email"
@@ -126,7 +179,7 @@ export default function Login() {
                 name="email"
                 value={values.email}
                 onChange={handleChange}
-                placeholder="your.email@college.edu"
+                placeholder={activeRole === 'admin' ? 'admin@campuspass.edu' : 'your.email@college.edu'}
                 className={`w-full rounded-xl border bg-white px-4 py-2.5 text-sm outline-none transition-colors focus:border-rust ${
                   errors.email ? 'border-rust' : 'border-ink/15'
                 }`}
@@ -155,19 +208,43 @@ export default function Login() {
               {errors.password && <p className="mt-1 text-xs text-rust">{errors.password}</p>}
             </div>
 
+            {activeRole === 'admin' && (
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setValues({
+                      email: 'admin@campuspass.edu',
+                      password: 'AdminPassword123!',
+                    })
+                  }
+                  className="text-xs font-mono text-rust hover:underline flex items-center gap-1.5 cursor-pointer"
+                >
+                  ⚡ Use Default Admin Credentials
+                </button>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={submitting}
               className="w-full rounded-full bg-ink py-3 text-sm font-semibold text-paper transition-colors hover:bg-ink-light disabled:opacity-60 cursor-pointer"
             >
-              {submitting ? 'Authenticating…' : 'Log In'}
+              {submitting
+                ? 'Authenticating…'
+                : activeRole === 'admin'
+                ? 'Log In as Admin'
+                : 'Log In'}
             </button>
           </form>
 
           <p className="mt-6 text-center text-sm text-slate">
             Don't have an account yet?{' '}
-            <Link to="/register" className="font-semibold text-rust hover:underline">
-              Sign up as a student
+            <Link
+              to={activeRole === 'admin' ? '/register?role=admin' : '/register'}
+              className="font-semibold text-rust hover:underline"
+            >
+              {activeRole === 'admin' ? 'Sign up as an admin' : 'Sign up as a student'}
             </Link>
           </p>
         </div>

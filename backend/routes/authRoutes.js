@@ -24,7 +24,7 @@ router.post(
         return res.status(400).json({ message: errors.array()[0].msg, errors: errors.array() })
       }
 
-      const { name, email, password } = req.body
+      const { name, email, password, role } = req.body
 
       const existingUser = await User.findOne({ email: email.toLowerCase() })
       if (existingUser) {
@@ -34,12 +34,14 @@ router.post(
       const salt = await bcrypt.genSalt(10)
       const hashedPassword = await bcrypt.hash(password, salt)
 
-      // Strictly enforce role is student for public signups
+      // Support student or admin role assignment
+      const userRole = role === 'admin' ? 'admin' : 'student'
+
       const user = await User.create({
         name,
         email: email.toLowerCase(),
         password: hashedPassword,
-        role: 'student',
+        role: userRole,
       })
 
       // Generate JWT immediately upon signup for seamless login

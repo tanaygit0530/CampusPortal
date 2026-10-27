@@ -30,5 +30,5 @@ export default function useForm(initialValues, validate) {
 
   const reset = () => setValues(initialValues)
 
-  return { values, errors, submitting, handleChange, handleSubmit, reset }
+  return { values, errors, submitting, handleChange, handleSubmit, reset, setValues }
 }
